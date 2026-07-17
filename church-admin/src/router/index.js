@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Login from '../views/Login.vue'
+import NotFound from '../views/NotFound.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -10,6 +11,7 @@ const routes = [
   { path: '/churches/new', name: 'church-create', component: () => import('../views/Churches/ChurchForm.vue') },
   { path: '/churches/:id', name: 'church-show', component: () => import('../views/Churches/ChurchShow.vue'), props: true },
   { path: '/churches/:id/edit', name: 'church-edit', component: () => import('../views/Churches/ChurchForm.vue'), props: true },
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFound, meta: { public: true } }
 ]
 
 const router = createRouter({

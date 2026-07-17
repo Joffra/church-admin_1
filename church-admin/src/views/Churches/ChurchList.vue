@@ -13,6 +13,29 @@ const confirmArchiveId = ref(null)
 const archiving = ref(false)
 const togglingId = ref(null)
 
+// ---- Pagination ----
+const currentPage = ref(1)
+const perPage = 10
+
+const filtered = computed(() => {
+  if (!search.value.trim()) return churches.value
+  const q = search.value.trim().toLowerCase()
+  return churches.value.filter((c) =>
+    [c.name, c.address, c.city].filter(Boolean).some((f) => f.toLowerCase().includes(q))
+  )
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / perPage)))
+const paginated = computed(() => {
+  const start = (currentPage.value - 1) * perPage
+  return filtered.value.slice(start, start + perPage)
+})
+
+// Reset to page 1 when search changes
+function onSearchInput() {
+  currentPage.value = 1
+}
+
 function unwrap(payload) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.data)) return payload.data
@@ -31,14 +54,6 @@ async function loadChurches() {
     loading.value = false
   }
 }
-
-const filtered = computed(() => {
-  if (!search.value.trim()) return churches.value
-  const q = search.value.trim().toLowerCase()
-  return churches.value.filter((c) =>
-    [c.name, c.address, c.city].filter(Boolean).some((f) => f.toLowerCase().includes(q))
-  )
-})
 
 function churchName(c) {
   return c.structure?.name || c.name || '—'
@@ -82,6 +97,10 @@ async function confirmArchive(id) {
   try {
     await ChurchesAPI.remove(id)
     churches.value = churches.value.filter((c) => c.id !== id)
+    // Adjust page if we deleted the last item on a page
+    if (paginated.value.length === 0 && currentPage.value > 1) {
+      currentPage.value--
+    }
   } catch (e) {
     error.value = e.response?.data?.message || "Impossible d'archiver cette église."
   } finally {
@@ -112,6 +131,7 @@ onMounted(loadChurches)
     <div class="mb-4">
       <input
         v-model="search"
+        @input="onSearchInput"
         type="text"
         placeholder="Rechercher par nom, ville…"
         class="w-full max-w-sm rounded-md border border-rule bg-white px-3.5 py-2 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold sm:w-72"
@@ -136,11 +156,11 @@ onMounted(loadChurches)
           <tr v-if="loading">
             <td colspan="4" class="px-5 py-10 text-center text-ink-dark/40">Chargement…</td>
           </tr>
-          <tr v-else-if="!filtered.length">
+          <tr v-else-if="!paginated.length">
             <td colspan="4" class="px-5 py-10 text-center text-ink-dark/40">Aucune église trouvée.</td>
           </tr>
           <tr
-            v-for="church in filtered"
+            v-for="church in paginated"
             :key="church.id"
             class="border-b border-rule last:border-0 hover:bg-parchment/60"
           >
@@ -183,6 +203,42 @@ onMounted(loadChurches)
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="!loading && filtered.length > perPage" class="mt-4 flex items-center justify-between">
+      <p class="text-xs text-ink-dark/45">
+        {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, filtered.length) }} sur {{ filtered.length }}
+      </p>
+      <div class="flex gap-1">
+        <button
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+          class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40 disabled:hover:border-rule disabled:hover:text-ink-dark/60"
+        >
+          ← Précédent
+        </button>
+        <div class="flex gap-1">
+          <button
+            v-for="p in totalPages"
+            :key="p"
+            @click="currentPage = p"
+            class="h-[30px] w-[30px] rounded-md border px-2 py-1.5 text-xs font-medium transition"
+            :class="p === currentPage
+              ? 'border-gold bg-gold/10 text-ink-dark'
+              : 'border-rule bg-white text-ink-dark/60 hover:border-gold hover:text-ink-dark'"
+          >
+            {{ p }}
+          </button>
+        </div>
+        <button
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+          class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40 disabled:hover:border-rule disabled:hover:text-ink-dark/60"
+        >
+          Suivant →
+        </button>
+      </div>
     </div>
 
     <!-- Confirm archive modal -->

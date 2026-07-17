@@ -9,15 +9,15 @@ const auth = useAuthStore()
 
 const navGroups = [
   {
-    label: 'Overview',
+    label: 'Vue d\'ensemble',
     items: [
-      { to: '/', label: 'Dashboard', icon: 'grid' },
+      { to: '/', label: 'Tableau de bord', icon: 'grid' },
     ],
   },
   {
-    label: 'Registry',
+    label: 'Registre',
     items: [
-      { to: '/churches', label: 'Churches', icon: 'building' },
+      { to: '/churches', label: 'Églises', icon: 'building' },
     ],
   },
 ]
@@ -94,4 +94,3 @@ async function onLogout() {
     </div>
   </aside>
 </template>
-

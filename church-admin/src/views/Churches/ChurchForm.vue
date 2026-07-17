@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChurchesAPI } from '../../services/api'
+import MapPicker from '../../components/MapPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -167,6 +168,23 @@ onMounted(() => {
           />
           <p v-if="fieldErrors.email" class="mt-1 text-xs text-rust">{{ fieldErrors.email[0] }}</p>
         </div>
+      </div>
+
+      <!-- GPS Coordinates with MapPicker -->
+      <div>
+        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+          Coordonnées GPS
+          <span class="ml-1 normal-case text-ink-dark/35">(cliquez sur la carte pour placer le marqueur)</span>
+        </label>
+        <input
+          v-model="form.gps_coordinates"
+          type="text"
+          :disabled="saving"
+          class="mb-2 w-full rounded-md border border-rule px-3.5 py-2.5 font-mono text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
+          placeholder="18.9712, -72.2852"
+        />
+        <p v-if="fieldErrors.gps_coordinates" class="mb-2 text-xs text-rust">{{ fieldErrors.gps_coordinates[0] }}</p>
+        <MapPicker v-model="form.gps_coordinates" />
       </div>
 
       <!-- Image -->

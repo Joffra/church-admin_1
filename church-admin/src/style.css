@@ -1,7 +1,4 @@
 @import "tailwindcss";
-@plugin "flowbite/plugin";
-@source "../node_modules/flowbite-vue/dist";
-@source "../node_modules/flowbite";
 
 @theme {
   --font-display: "Fraunces", "Georgia", serif;
