@@ -89,6 +89,16 @@ async function onSubmit() {
             </div>
           </div>
 
+          <!-- Mot de passe oublié -->
+          <div class="flex justify-end">
+            <RouterLink
+              to="/password/reset"
+              class="text-xs text-gold/80 transition hover:text-gold"
+            >
+              Mot de passe oublié ?
+            </RouterLink>
+          </div>
+
           <p v-if="auth.error" class="rounded-md border border-rust/40 bg-rust/10 px-3 py-2 text-sm text-rust">
             {{ auth.error }}
           </p>

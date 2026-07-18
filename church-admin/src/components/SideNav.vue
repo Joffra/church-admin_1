@@ -1,4 +1,5 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import logo from '../assets/logo.png'
@@ -6,6 +7,9 @@ import logo from '../assets/logo.png'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+// Collapsible "Mot de passe" section — expanded if we're already on a password route
+const passwordExpanded = ref(route.path.startsWith('/password'))
 
 const navGroups = [
   {
@@ -25,6 +29,10 @@ const navGroups = [
 function isActive(path) {
   if (path === '/churches') return route.path.startsWith('/churches')
   return route.path === path
+}
+
+function togglePassword() {
+  passwordExpanded.value = !passwordExpanded.value
 }
 
 async function onLogout() {
@@ -47,6 +55,7 @@ async function onLogout() {
     <div class="mx-6 border-t border-white/10"></div>
 
     <nav class="flex-1 overflow-y-auto px-4 py-5">
+      <!-- Standard nav groups -->
       <div v-for="group in navGroups" :key="group.label" class="mb-6">
         <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-parchment/40">
           {{ group.label }}
@@ -68,6 +77,79 @@ async function onLogout() {
             </RouterLink>
           </li>
         </ul>
+      </div>
+
+      <!-- Sécurité section (collapsible) -->
+      <div class="mb-2">
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-parchment/40">
+          Sécurité
+        </p>
+        <button
+          @click="togglePassword"
+          class="group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+          :class="passwordExpanded
+            ? 'bg-white/10 text-parchment font-medium'
+            : 'text-parchment/65 hover:bg-white/5 hover:text-parchment'"
+        >
+          <!-- Shield icon -->
+          <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="flex-1 text-left">Mot de passe</span>
+          <!-- Chevron -->
+          <svg
+            viewBox="0 0 24 24"
+            class="h-3.5 w-3.5 transition-transform duration-200"
+            :class="passwordExpanded ? 'rotate-90' : ''"
+            fill="none" stroke="currentColor" stroke-width="2"
+          >
+            <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        <!-- Sub-items -->
+        <transition
+          enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+          leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+          enter-from-class="max-h-0 opacity-0"
+          enter-to-class="max-h-40 opacity-100"
+          leave-from-class="max-h-40 opacity-100"
+          leave-to-class="max-h-0 opacity-0"
+        >
+          <ul v-if="passwordExpanded" class="mt-0.5 ml-7 space-y-0.5 border-l border-white/10 pl-3">
+            <li>
+              <RouterLink
+                to="/password/change"
+                class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+                :class="route.name === 'password-change'
+                  ? 'bg-white/10 text-parchment font-medium'
+                  : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
+              >
+                <span
+                  class="h-1.5 w-1.5 rounded-full transition-colors"
+                  :class="route.name === 'password-change' ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
+                ></span>
+                Modifier
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/password/reset"
+                class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+                :class="route.name === 'password-reset'
+                  ? 'bg-white/10 text-parchment font-medium'
+                  : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
+              >
+                <span
+                  class="h-1.5 w-1.5 rounded-full transition-colors"
+                  :class="route.name === 'password-reset' ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
+                ></span>
+                Réinitialiser
+              </RouterLink>
+            </li>
+          </ul>
+        </transition>
       </div>
     </nav>
 
