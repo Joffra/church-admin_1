@@ -39,18 +39,18 @@ export const AuthAPI = {
   me: () => api.get('/user'),
 
   // User Story 3 — Modifier son mot de passe
-  // PUT /user/password with { current_password, new_password, new_password_confirmation }
+  // POST /password/update with { current_password, new_password, new_password_confirmation }
   changePassword: (current_password, new_password, new_password_confirmation) =>
-    api.put('/user/password', { current_password, new_password, new_password_confirmation }),
+    api.post('/password/update', { current_password, new_password, new_password_confirmation }),
 
   // User Story 4 — Réinitialiser son mot de passe (multi-step flow)
   // Step 1: send verification code to the user's email
-  // POST /password/send-code with { email }
-  sendResetCode: (email) => api.post('/password/send-code', { email }),
+  // POST /password/reset/code with { email }
+  sendResetCode: (email) => api.post('/password/reset/code', { email }),
 
   // Step 2: verify the code, generate a temp password, email it
-  // POST /password/verify-code with { email, code }
-  verifyResetCode: (email, code) => api.post('/password/verify-code', { email, code }),
+  // POST /password/reset/code/verify with { email, code }
+  verifyResetCode: (email, code) => api.post('/password/reset/code/verify', { email, code }),
 }
 
 // ---- Resource helpers ----
