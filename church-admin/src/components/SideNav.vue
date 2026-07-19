@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import logo from '../assets/logo.png'
@@ -8,7 +8,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-// Collapsible "Mot de passe" section — expanded if we're already on a password route
+// Collapsible sections
 const passwordExpanded = ref(route.path.startsWith('/password'))
 
 const navGroups = [
@@ -22,12 +22,23 @@ const navGroups = [
     label: 'Registre',
     items: [
       { to: '/churches', label: 'Églises', icon: 'building' },
+      { to: '/members', label: 'Membres', icon: 'users' },
+      { to: '/sanctions', label: 'Sanctions', icon: 'gavel', show: () => auth.isAdmin },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { to: '/users', label: 'Utilisateurs', icon: 'key', show: () => auth.canManageUsers },
     ],
   },
 ]
 
 function isActive(path) {
   if (path === '/churches') return route.path.startsWith('/churches')
+  if (path === '/members') return route.path.startsWith('/members')
+  if (path === '/sanctions') return route.path.startsWith('/sanctions')
+  if (path === '/users') return route.path.startsWith('/users')
   return route.path === path
 }
 
@@ -61,7 +72,7 @@ async function onLogout() {
           {{ group.label }}
         </p>
         <ul class="space-y-0.5">
-          <li v-for="item in group.items" :key="item.to">
+          <li v-for="item in group.items.filter(i => !i.show || i.show())" :key="item.to">
             <RouterLink
               :to="item.to"
               class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
@@ -91,13 +102,11 @@ async function onLogout() {
             ? 'bg-white/10 text-parchment font-medium'
             : 'text-parchment/65 hover:bg-white/5 hover:text-parchment'"
         >
-          <!-- Shield icon -->
           <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z" stroke-linecap="round" stroke-linejoin="round" />
             <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <span class="flex-1 text-left">Mot de passe</span>
-          <!-- Chevron -->
           <svg
             viewBox="0 0 24 24"
             class="h-3.5 w-3.5 transition-transform duration-200"
@@ -108,7 +117,6 @@ async function onLogout() {
           </svg>
         </button>
 
-        <!-- Sub-items -->
         <transition
           enter-active-class="transition-all duration-200 ease-out overflow-hidden"
           leave-active-class="transition-all duration-150 ease-in overflow-hidden"

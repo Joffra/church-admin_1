@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ChurchesAPI, EcclesiasticalTitlesAPI } from '../services/api'
+import { ChurchesAPI, EcclesiasticalTitlesAPI, MembersAPI, SanctionsAPI } from '../services/api'
 import StatCard from '../components/StatCard.vue'
+import { useAuthStore } from '../stores/auth'
 
+const auth = useAuthStore()
 const loading = ref(true)
 const error = ref('')
 
@@ -10,6 +12,8 @@ const stats = ref({
   churches: null,
   churchesActive: null,
   ecclesiasticalTitles: null,
+  members: null,
+  activeSanctions: null,
 })
 
 const today = new Date().toLocaleDateString('fr-FR', {
@@ -29,9 +33,11 @@ async function loadStats() {
     const results = await Promise.allSettled([
       ChurchesAPI.list(),
       EcclesiasticalTitlesAPI.list(),
+      MembersAPI.list(),
+      SanctionsAPI.list({ status: 'active', per_page: 1 }),
     ])
 
-    const [churches, eccTitles] = results
+    const [churches, eccTitles, members, sanctions] = results
 
     if (churches.status === 'fulfilled') {
       const list = unwrap(churches.value.data)
@@ -39,11 +45,11 @@ async function loadStats() {
       stats.value.churchesActive = list.filter(
         (c) => (c.status || '').toLowerCase() === 'active' || (c.status || '').toLowerCase() === 'actif'
       ).length
-    } else {
-      stats.value.churches = null
     }
 
     stats.value.ecclesiasticalTitles = eccTitles.status === 'fulfilled' ? unwrap(eccTitles.value.data).length : null
+    stats.value.members = members.status === 'fulfilled' ? unwrap(members.value.data).length : null
+    stats.value.activeSanctions = sanctions.status === 'fulfilled' ? (sanctions.value.data?.meta?.total ?? unwrap(sanctions.value.data).length) : null
 
     if (results.every((r) => r.status === 'rejected')) {
       error.value = "Impossible de joindre l'API. Vérifiez que le serveur Laravel est lancé."
@@ -64,7 +70,7 @@ onMounted(loadStats)
       <div>
         <p class="text-xs uppercase tracking-[0.16em] text-gold capitalize">{{ today }}</p>
         <h1 class="mt-1 font-display text-3xl text-ink">Vue d'ensemble</h1>
-        <p class="mt-1 text-sm text-ink/55">Résumé des églises enregistrées dans le registre.</p>
+        <p class="mt-1 text-sm text-ink/55">Résumé du registre MECEIPH.</p>
       </div>
       <button
         @click="loadStats"
@@ -78,10 +84,11 @@ onMounted(loadStats)
       {{ error }}
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <StatCard label="Églises" :value="stats.churches" :loading="loading" hint="Congrégations enregistrées" accent="gold" />
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard label="Églises" :value="stats.churches" :loading="loading" hint="Congrégations" accent="gold" />
       <StatCard label="Églises actives" :value="stats.churchesActive" :loading="loading" hint="Statut actif" accent="sage" />
-      <StatCard label="Titres ecclésiastiques" :value="stats.ecclesiasticalTitles" :loading="loading" hint="Rangs du clergé enregistrés" accent="rust" />
+      <StatCard label="Membres" :value="stats.members" :loading="loading" hint="Membres enregistrés" accent="gold" />
+      <StatCard label="Sanctions actives" :value="stats.activeSanctions" :loading="loading" hint="Sanctions en cours" accent="rust" />
     </div>
 
     <div class="mt-10">
@@ -90,8 +97,14 @@ onMounted(loadStats)
         <RouterLink to="/churches" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Gérer les églises →
         </RouterLink>
-        <RouterLink to="/churches/new" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
-          Ajouter une église →
+        <RouterLink to="/members" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+          Gérer les membres →
+        </RouterLink>
+        <RouterLink v-if="auth.canManageUsers" to="/users" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+          Gérer les utilisateurs →
+        </RouterLink>
+        <RouterLink v-if="auth.isAdmin" to="/sanctions" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+          Voir les sanctions →
         </RouterLink>
       </div>
     </div>

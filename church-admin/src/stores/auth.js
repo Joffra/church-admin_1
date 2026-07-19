@@ -22,6 +22,18 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     fullName: (state) =>
       state.user ? `${state.user.first_name ?? ''} ${state.user.last_name ?? ''}`.trim() : '',
+    role: (state) => state.user?.role || '',
+    isMissionAdmin: (state) => state.user?.role === 'mission_admin',
+    isChurchAdmin: (state) => state.user?.role === 'church_admin',
+    isAdmin: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // church_admin or secrétaire (can manage members)
+    canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // only mission_admin can manage churches (add/change pastors, add/change admins)
+    canManageChurches: (state) => state.user?.role === 'mission_admin',
+    canSanctionMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    canTransferMembers: (state) => state.user?.role === 'mission_admin',
+    canManageUsers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    userChurchId: (state) => state.user?.church_id || null,
   },
 
   actions: {
