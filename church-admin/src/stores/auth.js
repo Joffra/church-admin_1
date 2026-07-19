@@ -37,16 +37,16 @@ export const useAuthStore = defineStore('auth', {
     canManageChurches: (state) => state.user?.role === 'mission_admin',
 
     // ---- Member management (Itération 1) ----
-    // View/search members → mission_admin + church_admin (backend only allows these two)
-    canViewMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    // Create member → church_admin only (backend store() blocks mission_admin)
+    // View/search members → Utilisateur (all authenticated users)
+    canViewMembers: (state) => !!state.user,
+    // Add, modify, archive member → Admin Eglise (church_admin)
+    canManageMembers: (state) => state.user?.role === 'church_admin',
+    // Create member → Admin Eglise (church_admin)
     canCreateMembers: (state) => state.user?.role === 'church_admin',
-    // Edit/archive member → both (gate passes for mission_admin via member:create-restricted)
-    canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    // Sanction/lift sanction → church_admin only (mission_admin lacks member:sanction permission)
+    // Sanction/lift sanction → Admin Eglise (church_admin)
     canSanctionMembers: (state) => state.user?.role === 'church_admin',
-    // Transfer → mission_admin only (church_admin lacks member:transfer permission in backend)
-    canTransferMembers: (state) => state.user?.role === 'mission_admin',
+    // Transfer member → Admin Eglise (church_admin)
+    canTransferMembers: (state) => state.user?.role === 'church_admin',
 
     userChurchId: (state) => state.user?.church_id || null,
   },

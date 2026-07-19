@@ -22,7 +22,7 @@ const navGroups = [
     label: 'Registre',
     items: [
       { to: '/churches', label: 'Églises', icon: 'building' },
-      { to: '/members', label: 'Membres', icon: 'users', show: () => auth.canViewMembers },
+      { to: '/members', label: 'Membres', icon: 'users' },
       { to: '/sanctions', label: 'Sanctions', icon: 'gavel', show: () => auth.isAdmin },
     ],
   },
