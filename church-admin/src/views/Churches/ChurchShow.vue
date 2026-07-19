@@ -184,6 +184,7 @@ onMounted(load)
           <p class="text-xs uppercase tracking-[0.16em] text-gold">Fiche détaillée</p>
           <h1 class="mt-1 font-display text-3xl text-ink-dark">{{ getField(church, 'name') }}</h1>
           <button
+            v-if="auth.canManageChurches"
             @click="toggleStatus"
             :disabled="togglingStatus"
             title="Cliquer pour changer le statut"
@@ -191,8 +192,11 @@ onMounted(load)
           >
             <StatusBadge :status="getStatus(church)" />
           </button>
+          <div v-else class="mt-2">
+            <StatusBadge :status="getStatus(church)" />
+          </div>
         </div>
-        <div class="flex gap-2">
+        <div v-if="auth.canManageChurches" class="flex gap-2">
           <RouterLink
             :to="{ name: 'church-edit', params: { id: church.id } }"
             class="rounded-md border border-rule bg-white px-4 py-2 text-sm font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"

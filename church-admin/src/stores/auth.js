@@ -37,8 +37,8 @@ export const useAuthStore = defineStore('auth', {
     canManageChurches: (state) => state.user?.role === 'mission_admin',
 
     // ---- Member management (Itération 1) ----
-    // View/search members → Utilisateur (all authenticated users)
-    canViewMembers: (state) => !!state.user,
+    // View/search members → Admin (both — backend 403s non-admins)
+    canViewMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
     // Add, modify, archive member → Admin Eglise (church_admin)
     canManageMembers: (state) => state.user?.role === 'church_admin',
     // Create member → Admin Eglise (church_admin)

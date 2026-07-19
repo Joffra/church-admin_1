@@ -97,7 +97,7 @@ onMounted(loadStats)
         <RouterLink to="/churches" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Gérer les églises →
         </RouterLink>
-        <RouterLink to="/members" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+        <RouterLink v-if="auth.canViewMembers" to="/members" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Gérer les membres →
         </RouterLink>
         <RouterLink v-if="auth.canManageUsers" to="/users" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">

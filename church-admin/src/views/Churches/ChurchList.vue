@@ -3,8 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ChurchesAPI } from '../../services/api'
 import StatusBadge from '../../components/StatusBadge.vue'
+import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 const churches = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -121,6 +123,7 @@ onMounted(loadChurches)
         <p class="mt-1 text-sm text-ink-dark/55">Toutes les congrégations enregistrées.</p>
       </div>
       <RouterLink
+        v-if="auth.canManageChurches"
         to="/churches/new"
         class="rounded-md bg-gold px-4 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light"
       >
@@ -169,7 +172,9 @@ onMounted(loadChurches)
             </td>
             <td class="px-5 py-3.5 text-ink-dark/60">{{ churchAddress(church) }}</td>
             <td class="px-5 py-3.5">
+              <StatusBadge v-if="!auth.canManageChurches" :status="churchStatus(church)" />
               <button
+                v-else
                 @click="toggleStatus(church)"
                 :disabled="togglingId === church.id"
                 title="Cliquer pour changer le statut"
@@ -187,12 +192,14 @@ onMounted(loadChurches)
                   Voir
                 </button>
                 <button
+                  v-if="auth.canManageChurches"
                   @click="goEdit(church.id)"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
                 >
                   Modifier
                 </button>
                 <button
+                  v-if="auth.canManageChurches"
                   @click="confirmArchiveId = church.id"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
                 >

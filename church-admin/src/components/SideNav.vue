@@ -21,14 +21,18 @@ const navGroups = [
   {
     label: 'Registre',
     items: [
+      // All authenticated users can view church list + details (no gate on index/show)
       { to: '/churches', label: 'Églises', icon: 'building' },
-      { to: '/members', label: 'Membres', icon: 'users' },
+      // Only admins can view members (backend 403s non-admins on index/show)
+      { to: '/members', label: 'Membres', icon: 'users', show: () => auth.canViewMembers },
+      // Only admins can view sanctions (backend 403s non-admins)
       { to: '/sanctions', label: 'Sanctions', icon: 'gavel', show: () => auth.isAdmin },
     ],
   },
   {
     label: 'Administration',
     items: [
+      // Both admins can view/manage users
       { to: '/users', label: 'Utilisateurs', icon: 'key', show: () => auth.canManageUsers },
     ],
   },
