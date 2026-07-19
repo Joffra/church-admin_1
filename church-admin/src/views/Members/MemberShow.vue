@@ -341,7 +341,7 @@ onMounted(loadMember)
 
             <!-- Transfer -->
             <button
-              v-if="auth.isMissionAdmin"
+              v-if="auth.canTransferMembers"
               @click="openTransfer"
               class="rounded-md border border-rule bg-white px-3.5 py-2 text-xs font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"
             >

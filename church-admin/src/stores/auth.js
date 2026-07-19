@@ -25,14 +25,29 @@ export const useAuthStore = defineStore('auth', {
     role: (state) => state.user?.role || '',
     isMissionAdmin: (state) => state.user?.role === 'mission_admin',
     isChurchAdmin: (state) => state.user?.role === 'church_admin',
+    // Admin = both mission_admin and church_admin
     isAdmin: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    // church_admin or secrétaire (can manage members)
-    canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    // only mission_admin can manage churches (add/change pastors, add/change admins)
-    canManageChurches: (state) => state.user?.role === 'mission_admin',
-    canSanctionMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    canTransferMembers: (state) => state.user?.role === 'mission_admin',
+
+    // ---- User management (Itération 1) ----
+    // View, search, suspend, activate, reset password → Admin (both)
     canManageUsers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+
+    // ---- Church management ----
+    // Add/change pastor, add/change church admin → mission_admin only
+    canManageChurches: (state) => state.user?.role === 'mission_admin',
+
+    // ---- Member management (Itération 1) ----
+    // View/search members → mission_admin + church_admin (backend only allows these two)
+    canViewMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // Create member → church_admin only (backend store() blocks mission_admin)
+    canCreateMembers: (state) => state.user?.role === 'church_admin',
+    // Edit/archive member → both (gate passes for mission_admin via member:create-restricted)
+    canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // Sanction/lift sanction → church_admin only (mission_admin lacks member:sanction permission)
+    canSanctionMembers: (state) => state.user?.role === 'church_admin',
+    // Transfer → mission_admin only (church_admin lacks member:transfer permission in backend)
+    canTransferMembers: (state) => state.user?.role === 'mission_admin',
+
     userChurchId: (state) => state.user?.church_id || null,
   },
 

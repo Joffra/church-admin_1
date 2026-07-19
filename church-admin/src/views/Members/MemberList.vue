@@ -96,7 +96,7 @@ onMounted(loadMembers)
         <p class="mt-1 text-sm text-ink-dark/55">Tous les membres enregistrés.</p>
       </div>
       <RouterLink
-        v-if="auth.canManageMembers"
+        v-if="auth.canCreateMembers"
         to="/members/new"
         class="rounded-md bg-gold px-4 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light"
       >
