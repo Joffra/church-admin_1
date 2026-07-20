@@ -43,9 +43,11 @@ export const useAuthStore = defineStore('auth', {
     canViewMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
     // store(): manage-members gate passes for mission_admin (member:create-restricted)
     // BUT controller explicitly returns 403 for mission_admin → church_admin only
+    // Backend store() method explicitly returns 403 for mission_admin:
+    //   "Action restreinte. Création pasteur responsable et admin uniquement autorisée."
+    // Only church_admin can create regular members.
     canCreateMembers: (state) => state.user?.role === 'church_admin',
-    // update()/destroy(): manage-members gate → both pass (church_admin via member:manage,
-    // mission_admin via member:create-restricted)
+    // update()/destroy()/sanction()/transfer(): gate passes for both roles
     canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
     // sanction-members gate: mission_admin → true (before perm check),
     // church_admin → has member:sanction (own church)

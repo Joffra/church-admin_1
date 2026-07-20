@@ -66,9 +66,11 @@ router.beforeEach((to, from) => {
     return { name: 'dashboard' }
   }
 
-  // 7. Requires church_admin to create/edit members
-  if (to.meta.requiresChurchAdmin && !auth.canManageMembers) {
-    return { name: 'dashboard' }
+  // 7. Create/edit member: church_admin ONLY
+  //    mission_admin is explicitly blocked by the backend (store() returns 403).
+  //    requiresChurchAdmin guard must use canCreateMembers, not canManageMembers.
+  if (to.meta.requiresChurchAdmin && !auth.canCreateMembers) {
+    return { name: 'members' }
   }
 
   // 8. Member detail page: admins only — regular users cannot call GET /members/:id
