@@ -1,7 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { SanctionsAPI } from '../../services/api'
+import { SanctionsAPI, MembersAPI } from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
+
+const auth = useAuthStore()
 
 const sanctions = ref([])
 const loading = ref(true)
@@ -124,6 +127,58 @@ function setPage(page) {
   loadSanctions()
 }
 
+// ---- Lift Sanction Quick Action ----
+const liftSanctionTarget = ref(null) // the sanction being lifted
+const liftForm = ref({ lifted_reason: '' })
+const liftLoading = ref(false)
+const liftError = ref('')
+const successMessage = ref('')
+
+function openLiftSanction(sanction) {
+  liftSanctionTarget.value = sanction
+  liftForm.value = { lifted_reason: '' }
+  liftError.value = ''
+}
+
+function closeLiftSanction() {
+  liftSanctionTarget.value = null
+  liftForm.value = { lifted_reason: '' }
+  liftError.value = ''
+}
+
+async function handleLiftSanction() {
+  if (!liftSanctionTarget.value) return
+  if (!liftForm.value.lifted_reason.trim()) {
+    liftError.value = "Le motif de la levée est requis."
+    return
+  }
+  liftLoading.value = true
+  liftError.value = ''
+  try {
+    const memberId = liftSanctionTarget.value.member?.id
+    if (!memberId) {
+      liftError.value = "Impossible d'identifier le membre lié à cette sanction."
+      return
+    }
+    await MembersAPI.liftSanction(memberId, liftForm.value.lifted_reason.trim())
+    const memberName = `${liftSanctionTarget.value.member.first_name} ${liftSanctionTarget.value.member.last_name}`
+    closeLiftSanction()
+    successMessage.value = `La sanction de ${memberName} a été levée avec succès.`
+    await loadSanctions()
+    setTimeout(() => { successMessage.value = '' }, 5000)
+  } catch (e) {
+    liftError.value = e.response?.data?.message || "Une erreur s'est produite lors de la levée de la sanction."
+  } finally {
+    liftLoading.value = false
+  }
+}
+
+// Helper: is this sanction currently active (can be lifted)?
+function canLiftSanction(sanction) {
+  // Only active sanctions (not already lifted) can be lifted
+  return !sanction.lifted_at && sanction.is_active
+}
+
 onMounted(loadSanctions)
 </script>
 
@@ -182,6 +237,15 @@ onMounted(loadSanctions)
     <!-- Error Display -->
     <div v-if="error" class="mb-6 rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
       {{ error }}
+    </div>
+
+    <!-- Success Display -->
+    <div
+      v-if="successMessage"
+      class="mb-6 flex items-center justify-between rounded-md border border-sage/30 bg-sage/5 px-4 py-3 text-sm text-sage"
+    >
+      <span class="font-medium">{{ successMessage }}</span>
+      <button @click="successMessage = ''" class="text-sage/70 hover:text-sage text-xs font-bold ml-2">✕</button>
     </div>
 
     <!-- Table Container -->
@@ -255,6 +319,15 @@ onMounted(loadSanctions)
             <!-- Actions -->
             <td class="px-5 py-3.5 text-right">
               <div class="flex justify-end gap-2" v-if="sanction.member">
+                <!-- Lever la sanction (quick action) -->
+                <button
+                  v-if="canLiftSanction(sanction) && auth.canSanctionMembers"
+                  @click="openLiftSanction(sanction)"
+                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-sage/80 transition hover:bg-sage/10 hover:text-sage"
+                >
+                  Lever
+                </button>
+                <!-- Voir le membre -->
                 <RouterLink
                   :to="`/members/${sanction.member.id}`"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
@@ -302,6 +375,58 @@ onMounted(loadSanctions)
         >
           Suivant →
         </button>
+      </div>
+    </div>
+
+    <!-- Lift Sanction Confirmation Modal -->
+    <div
+      v-if="liftSanctionTarget"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
+      @click.self="closeLiftSanction"
+    >
+      <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl border border-rule">
+        <h3 class="font-display text-lg text-ink-dark flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sage/10 text-sage">✔️</span>
+          Lever la sanction ?
+        </h3>
+        <p class="mt-3 text-sm text-ink-dark/60">
+          Êtes-vous sûr de vouloir lever la sanction de
+          <strong>{{ liftSanctionTarget.member?.first_name }} {{ liftSanctionTarget.member?.last_name }}</strong>
+          (motif initial : {{ liftSanctionTarget.reason }}) ?
+        </p>
+        <!-- Lift reason input -->
+        <div class="mt-4">
+          <label class="block text-xs font-medium text-ink-dark/60 mb-1">
+            Motif de la levée <span class="text-rust">*</span>
+          </label>
+          <textarea
+            v-model="liftForm.lifted_reason"
+            rows="3"
+            placeholder="Expliquez la raison de la levée de la sanction…"
+            class="w-full rounded-md border border-rule bg-white px-3.5 py-2 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+          />
+        </div>
+        <!-- Modal error -->
+        <div v-if="liftError" class="mt-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">
+          {{ liftError }}
+        </div>
+        <!-- Action buttons -->
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="closeLiftSanction"
+            :disabled="liftLoading"
+            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark hover:bg-parchment transition"
+          >
+            Annuler
+          </button>
+          <button
+            :disabled="liftLoading"
+            @click="handleLiftSanction"
+            class="rounded-md bg-sage px-4 py-2 text-sm font-semibold text-white transition hover:bg-sage/90 disabled:opacity-60"
+          >
+            {{ liftLoading ? 'Validation…' : 'Lever la sanction' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
