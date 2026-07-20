@@ -95,7 +95,7 @@ onMounted(loadStats)
       <h2 class="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/45">Actions rapides</h2>
       <div class="flex flex-wrap gap-3">
         <RouterLink to="/churches" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
-          Gérer les églises →
+          {{ auth.canManageChurches ? 'Gérer les églises' : 'Voir les églises' }} →
         </RouterLink>
         <RouterLink v-if="auth.canViewMembers" to="/members" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Gérer les membres →
