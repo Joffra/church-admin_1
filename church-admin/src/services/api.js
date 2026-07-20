@@ -48,6 +48,7 @@ export const ChurchesAPI = {
   update: (id, data) => api.put(`/churches/${id}`, data),
   changeStatus: (id, newStatus) => api.patch(`/churches/${id}/change-status`, { status: newStatus }),
   changePastor: (id, pastorMemberId) => api.put(`/churches/${id}/change-pastor`, { pastor_member_id: pastorMemberId }),
+  changeAdmin: (id, adminMemberId) => api.put(`/churches/${id}/change-admin`, { admin_member_id: adminMemberId }),
   createForm: (formData) => api.post('/churches', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),

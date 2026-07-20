@@ -98,10 +98,11 @@ async function onChangePastor() {
   changingPastor.value = true
   pastorError.value = ''
   try {
-    const { data } = await ChurchesAPI.changePastor(church.value.id, selectedPastorId.value)
-    const updated = data.data ?? data
-    church.value = { ...church.value, ...updated }
+    await ChurchesAPI.changePastor(church.value.id, selectedPastorId.value)
     showPastorModal.value = false
+    // Reload the full church data so pastor AND admin info are both fresh
+    // (the changePastor response only loads headPastor, not churchAdmin)
+    await load()
   } catch (e) {
     pastorError.value = e.response?.data?.message || 'Impossible de changer le pasteur responsable.'
   } finally {
@@ -133,11 +134,12 @@ async function onChangeAdmin() {
   changingAdmin.value = true
   adminError.value = ''
   try {
-    // The backend doesn't have a dedicated change-admin endpoint yet,
-    // but we can use the member update to set church_id + elevate role
-    // For now, we show a success message and close
-    // TODO: When backend adds change-admin endpoint, wire it here
-    adminError.value = 'Cette fonctionnalité nécessite un endpoint backend dédié (à venir).'
+    await ChurchesAPI.changeAdmin(church.value.id, selectedAdminId.value)
+    showAdminModal.value = false
+    // Reload the full church data so admin info is fresh
+    await load()
+  } catch (e) {
+    adminError.value = e.response?.data?.message || "Impossible de changer l'administrateur de l'église."
   } finally {
     changingAdmin.value = false
   }

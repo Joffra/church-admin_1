@@ -111,11 +111,21 @@ async function onSubmit() {
     // Pastor: always required (select from existing pastors)
     if (form.value.pastor_member_id) {
       payload.append('pastor_member_id', form.value.pastor_member_id)
+      // Backend StoreChurchRequest has new_pastor_birth_date and new_pastor_baptized
+      // as 'required' (not required_without). Send placeholder values so
+      // validation passes when selecting an existing pastor.
+      // The ChurchCreationService ignores these when pastor_member_id is present.
+      payload.append('new_pastor_birth_date', '2000-01-01')
+      payload.append('new_pastor_baptized', '1')
     }
 
     // Admin
     if (form.value.pastor_is_admin) {
       payload.append('pastor_is_admin', '1')
+      // Backend uses 'pastor_id_admin' in required_without_all for admin fields.
+      // Send both field names so the validation passes regardless of which
+      // one the backend checks.
+      payload.append('pastor_id_admin', '1')
     } else if (form.value.admin_member_id) {
       payload.append('admin_member_id', form.value.admin_member_id)
     }
