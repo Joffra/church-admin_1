@@ -71,6 +71,16 @@ async function fetchUsers() {
 }
 
 // Helpers for user information
+function getAvatarUrl(user) {
+  return user?.member?.profile_picture || null
+}
+
+function getInitials(user) {
+  const fn = user?.member?.first_name?.[0] || ''
+  const ln = user?.member?.last_name?.[0] || ''
+  return (fn + ln || 'U').toUpperCase()
+}
+
 function getUserName(user) {
   if (user?.member) {
     return `${user.member.first_name ?? ''} ${user.member.last_name ?? ''}`.trim() || 'Sans nom'
@@ -233,18 +243,33 @@ onMounted(() => {
               {{ user.member?.member_code || '—' }}
             </td>
             
-            <!-- Member Name with RouterLink -->
-            <td class="px-5 py-3.5 font-medium text-ink-dark">
-              <RouterLink
-                v-if="user.member?.id"
-                :to="`/members/${user.member.id}`"
-                class="text-ink hover:text-gold hover:underline transition-colors font-medium"
-              >
-                {{ getUserName(user) }}
-              </RouterLink>
-              <span v-else class="text-ink-dark/45 italic">
-                {{ getUserName(user) }}
-              </span>
+            <!-- Member Name with Avatar + RouterLink -->
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <!-- Profile picture or initials avatar -->
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/15 border border-rule overflow-hidden">
+                  <img
+                    v-if="getAvatarUrl(user)"
+                    :src="getAvatarUrl(user)"
+                    :alt="getUserName(user)"
+                    class="h-full w-full object-cover"
+                  />
+                  <span v-else class="text-sm font-semibold text-gold">
+                    {{ getInitials(user) }}
+                  </span>
+                </div>
+                <!-- Name link -->
+                <RouterLink
+                  v-if="user.member?.id"
+                  :to="`/members/${user.member.id}`"
+                  class="font-medium text-ink hover:text-gold hover:underline transition-colors"
+                >
+                  {{ getUserName(user) }}
+                </RouterLink>
+                <span v-else class="font-medium text-ink-dark/45 italic">
+                  {{ getUserName(user) }}
+                </span>
+              </div>
             </td>
             
             <!-- Role -->
