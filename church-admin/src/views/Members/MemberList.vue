@@ -124,7 +124,7 @@ onMounted(loadMembers)
           <tr class="border-b border-rule bg-parchment-dark/40 text-[11px] uppercase tracking-wide text-ink-dark/45">
             <th class="px-5 py-3 font-semibold">Code membre</th>
             <th class="px-5 py-3 font-semibold">Nom</th>
-            <th class="px-5 py-3 font-semibold">Titre</th>
+            <th class="px-5 py-3 font-semibold">Titre ecclésiastique</th>
             <th class="px-5 py-3 font-semibold">Église</th>
             <th class="px-5 py-3 font-semibold">Statut</th>
             <th class="px-5 py-3 font-semibold text-right">Actions</th>
