@@ -13,8 +13,9 @@ function formatGender(g) {
 }
 
 function roleLabel(role) {
-  if (role === 'mission_admin') return 'Administrateur de mission'
-  if (role === 'church_admin') return 'Administrateur d\'église'
+  if (role === 'mission_admin') return 'Admin Mission'
+  if (role === 'church_admin') return 'Admin Église'
+  if (role === 'user') return 'Utilisateur'
   return 'Membre'
 }
 </script>

@@ -91,6 +91,7 @@ function getUserName(user) {
 function formatRole(role) {
   if (role === 'mission_admin') return 'Admin Mission'
   if (role === 'church_admin') return 'Admin Église'
+  if (role === 'user') return 'Utilisateur'
   return role || '—'
 }
 

@@ -8,6 +8,13 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
+function roleLabel(role) {
+  if (role === 'mission_admin') return 'Admin Mission'
+  if (role === 'church_admin') return 'Admin Église'
+  if (role === 'user') return 'Utilisateur'
+  return role || 'Connecté'
+}
+
 // Collapsible sections
 const passwordExpanded = ref(route.path.startsWith('/password'))
 
@@ -186,7 +193,7 @@ async function onLogout() {
         <p class="truncate leading-tight text-parchment/90">
           {{ auth.fullName || auth.user?.member_code || 'Administrateur' }}
         </p>
-        <p class="text-xs text-parchment/40">{{ auth.user?.role || 'Connecté' }}</p>
+        <p class="text-xs text-parchment/40">{{ roleLabel(auth.user?.role) }}</p>
       </div>
       <button
         @click="onLogout"
