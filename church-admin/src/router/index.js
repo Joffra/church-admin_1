@@ -7,6 +7,8 @@ import { useAuthStore } from '../stores/auth'
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
   { path: '/', name: 'dashboard', component: Dashboard },
+  // Own profile page — reads from auth store only, no API call, accessible to all authenticated users
+  { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
   // Churches — list and detail are public to all authenticated users
   { path: '/churches', name: 'churches', component: () => import('../views/Churches/ChurchList.vue') },
   { path: '/churches/new', name: 'church-create', component: () => import('../views/Churches/ChurchForm.vue'), meta: { requiresChurchManager: true } },
@@ -69,16 +71,12 @@ router.beforeEach((to, from) => {
     return { name: 'dashboard' }
   }
 
-  // 8. Member detail page: admins can see any, regular users can only see their own profile
+  // 8. Member detail page: admins only — regular users cannot call GET /members/:id
+  //    (view-members gate requires member:view-any permission, not granted to regular users)
+  //    Regular users are redirected to /profile which reads from the auth store instead
   if (to.meta.requiresMemberShow) {
     if (auth.isAdmin) return true
-    // Regular user → only their own member profile
-    const memberId = String(auth.userMemberId)
-    const requestedId = String(to.params.id)
-    if (memberId && memberId === requestedId) return true
-    // Not their profile → redirect to their own profile if we know it, else dashboard
-    if (memberId) return { name: 'member-show', params: { id: memberId } }
-    return { name: 'dashboard' }
+    return { name: 'profile' }
   }
 
   return true

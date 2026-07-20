@@ -24,12 +24,10 @@ const navGroups = computed(() => {
       items: [
         // All authenticated users can view church list + details
         { to: '/churches', label: 'Églises' },
-        // Admins can browse full member list; regular users only see their own profile
+        // Admins can browse full member list; regular users see /profile (auth store only — no API call)
         ...(auth.canViewMembers
           ? [{ to: '/members', label: 'Membres' }]
-          : auth.userMemberId
-            ? [{ to: `/members/${auth.userMemberId}`, label: 'Mon profil' }]
-            : []
+          : [{ to: '/profile', label: 'Mon profil' }]
         ),
         // Only admins can view sanctions
         ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
@@ -55,8 +53,8 @@ function isActive(path) {
   if (path === '/members') return route.path.startsWith('/members')
   if (path === '/sanctions') return route.path.startsWith('/sanctions')
   if (path === '/users') return route.path.startsWith('/users')
-  // Mon profil: match /members/:id exactly
-  if (path.startsWith('/members/')) return route.path === path
+  // /profile: exact match
+  if (path === '/profile') return route.path === '/profile'
   return route.path === path
 }
 
