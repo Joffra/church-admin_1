@@ -55,6 +55,8 @@ export const useAuthStore = defineStore('auth', {
     canTransferMembers: (state) => state.user?.role === 'mission_admin',
 
     userChurchId: (state) => state.user?.church_id || null,
+    // The member_id of the currently logged-in user (login response provides this)
+    userMemberId: (state) => state.user?.member_id || null,
   },
 
   actions: {

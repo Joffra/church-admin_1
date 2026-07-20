@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import logo from '../assets/logo.png'
@@ -11,38 +11,52 @@ const auth = useAuthStore()
 // Collapsible sections
 const passwordExpanded = ref(route.path.startsWith('/password'))
 
-const navGroups = [
-  {
-    label: 'Vue d\'ensemble',
-    items: [
-      { to: '/', label: 'Tableau de bord', icon: 'grid' },
-    ],
-  },
-  {
-    label: 'Registre',
-    items: [
-      // All authenticated users can view church list + details (no gate on index/show)
-      { to: '/churches', label: 'Églises', icon: 'building' },
-      // Only admins can view members (backend 403s non-admins on index/show)
-      { to: '/members', label: 'Membres', icon: 'users', show: () => auth.canViewMembers },
-      // Only admins can view sanctions (backend 403s non-admins)
-      { to: '/sanctions', label: 'Sanctions', icon: 'gavel', show: () => auth.isAdmin },
-    ],
-  },
-  {
-    label: 'Administration',
-    items: [
-      // Both admins can view/manage users
-      { to: '/users', label: 'Utilisateurs', icon: 'key', show: () => auth.canManageUsers },
-    ],
-  },
-]
+const navGroups = computed(() => {
+  const groups = [
+    {
+      label: 'Vue d\'ensemble',
+      items: [
+        { to: '/', label: 'Tableau de bord' },
+      ],
+    },
+    {
+      label: 'Registre',
+      items: [
+        // All authenticated users can view church list + details
+        { to: '/churches', label: 'Églises' },
+        // Admins can browse full member list; regular users only see their own profile
+        ...(auth.canViewMembers
+          ? [{ to: '/members', label: 'Membres' }]
+          : auth.userMemberId
+            ? [{ to: `/members/${auth.userMemberId}`, label: 'Mon profil' }]
+            : []
+        ),
+        // Only admins can view sanctions
+        ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
+      ],
+    },
+  ]
+
+  // Administration section only for admins
+  if (auth.canManageUsers) {
+    groups.push({
+      label: 'Administration',
+      items: [
+        { to: '/users', label: 'Utilisateurs' },
+      ],
+    })
+  }
+
+  return groups
+})
 
 function isActive(path) {
   if (path === '/churches') return route.path.startsWith('/churches')
   if (path === '/members') return route.path.startsWith('/members')
   if (path === '/sanctions') return route.path.startsWith('/sanctions')
   if (path === '/users') return route.path.startsWith('/users')
+  // Mon profil: match /members/:id exactly
+  if (path.startsWith('/members/')) return route.path === path
   return route.path === path
 }
 

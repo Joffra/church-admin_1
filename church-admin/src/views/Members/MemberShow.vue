@@ -58,7 +58,13 @@ async function loadMember() {
     member.value = data.data ?? data
   } catch (e) {
     console.error(e)
-    error.value = "Impossible de charger les informations du membre demandé."
+    if (e.response?.status === 403) {
+      error.value = "Accès refusé. Vous n'êtes pas autorisé à consulter ce profil."
+    } else if (e.response?.status === 404) {
+      error.value = "Ce membre est introuvable."
+    } else {
+      error.value = "Impossible de charger les informations du membre demandé."
+    }
   } finally {
     loading.value = false
   }
