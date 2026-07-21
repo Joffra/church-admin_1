@@ -237,6 +237,10 @@ onMounted(load)
           <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Coordonnées GPS</dt>
           <dd class="mt-1 font-mono text-sm text-ink-dark">{{ church.gps_coordinates || '—' }}</dd>
         </div>
+        <!-- Map display moved here for prominence -->
+        <div v-if="church.gps_coordinates" class="col-span-1 sm:col-span-2 mt-1">
+          <MapPicker :model-value="church.gps_coordinates" :readonly="true" />
+        </div>
       </dl>
 
       <!-- Personnel section -->
@@ -288,11 +292,7 @@ onMounted(load)
         </div>
       </div>
 
-      <!-- Embedded map -->
-      <div v-if="church.gps_coordinates" class="mb-5">
-        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Localisation</p>
-        <MapPicker :model-value="church.gps_coordinates" :readonly="true" />
-      </div>
+
     </div>
 
     <!-- Confirm archive modal -->
