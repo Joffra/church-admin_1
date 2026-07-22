@@ -9,7 +9,8 @@ const map = {
   inactive: { label: 'Fermé', dot: 'bg-rust', text: 'text-rust', bg: 'bg-rust/10' },
   closed: { label: 'Fermé', dot: 'bg-rust', text: 'text-rust', bg: 'bg-rust/10' },
   fermé: { label: 'Fermé', dot: 'bg-rust', text: 'text-rust', bg: 'bg-rust/10' },
-  sanctioned: { label: 'Sanctionné', dot: 'bg-rust', text: 'text-rust', bg: 'bg-rust/10' },
+  sanctioned: { label: 'Sanctionné', dot: 'bg-amber-500', text: 'text-amber-600', bg: 'bg-amber-50' },
+  sanctionné: { label: 'Sanctionné', dot: 'bg-amber-500', text: 'text-amber-600', bg: 'bg-amber-50' },
 }
 
 function styleFor(s) {

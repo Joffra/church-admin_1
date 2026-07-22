@@ -8,14 +8,13 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const props = defineProps({ id: String })
-const isEdit = computed(() => !!props.id)
-
+const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)
-const submitting = ref(false)
-const success = ref('')
+const saving = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
+const imagePreview = ref(null)
+const imageFile = ref(null)
 
 const titles = ref([])
 
@@ -27,298 +26,317 @@ const form = ref({
   email: '',
   ecclesiastical_title_id: '',
   birth_date: '',
-  baptized: false,
-  profile_picture: null,
+  baptized: null,
 })
 
-const picturePreview = ref('')
-
-function onPictureChange(e) {
+function onImageChange(e) {
   const file = e.target.files[0]
   if (!file) return
-  form.value.profile_picture = file
-  picturePreview.value = URL.createObjectURL(file)
-}
-
-function buildFormData() {
-  const fd = new FormData()
-  fd.append('church_id', auth.userChurchId || '')
-  fd.append('first_name', form.value.first_name)
-  fd.append('last_name', form.value.last_name)
-  fd.append('gender', form.value.gender)
-  fd.append('phone', form.value.phone || '')
-  fd.append('email', form.value.email || '')
-  fd.append('ecclesiastical_title_id', form.value.ecclesiastical_title_id)
-  fd.append('birth_date', form.value.birth_date || '')
-  fd.append('baptized', form.value.baptized ? '1' : '0')
-  if (form.value.profile_picture instanceof File) {
-    fd.append('profile_picture', form.value.profile_picture)
-  }
-  if (isEdit.value) {
-    fd.append('_method', 'PUT')
-  }
-  return fd
-}
-
-async function onSubmit() {
-  submitting.value = true
-  success.value = ''
-  error.value = ''
-  fieldErrors.value = {}
-
-  try {
-    const fd = buildFormData()
-    if (isEdit.value) {
-      await MembersAPI.updateForm(props.id, fd)
-      success.value = 'Membre modifié avec succès.'
-    } else {
-      await MembersAPI.createForm(fd)
-      success.value = 'Membre ajouté avec succès.'
-    }
-    setTimeout(() => router.push({ name: 'members' }), 1200)
-  } catch (e) {
-    if (e.response?.status === 422 && e.response.data?.errors) {
-      fieldErrors.value = e.response.data.errors
-      error.value = e.response.data.message || 'Veuillez corriger les champs en erreur.'
-    } else if (e.response?.data?.message) {
-      error.value = e.response.data.message
-    } else {
-      error.value = "Impossible d'enregistrer le membre. Vérifiez votre connexion."
-    }
-  } finally {
-    submitting.value = false
-  }
-}
-
-async function loadMember() {
-  if (!props.id) return
-  loading.value = true
-  try {
-    const { data } = await MembersAPI.get(props.id)
-    const m = data.data ?? data
-    form.value.first_name = m.first_name || ''
-    form.value.last_name = m.last_name || ''
-    form.value.gender = m.gender || ''
-    form.value.phone = m.phone || ''
-    form.value.email = m.email || ''
-    form.value.ecclesiastical_title_id = m.ecclesiastical_title_id || ''
-    form.value.birth_date = m.birth_date || ''
-    form.value.baptized = !!m.baptized
-    if (m.profile_picture) picturePreview.value = m.profile_picture
-  } catch (e) {
-    error.value = 'Impossible de charger les informations du membre.'
-  } finally {
-    loading.value = false
-  }
+  imageFile.value = file
+  imagePreview.value = URL.createObjectURL(file)
 }
 
 async function loadTitles() {
   try {
     const { data } = await EcclesiasticalTitlesAPI.list()
-    titles.value = Array.isArray(data) ? data : (data.data ?? [])
-  } catch {
-    // silent — titles dropdown will just be empty
+    titles.value = data.data ?? data
+  } catch (e) {
+    console.error('Erreur lors du chargement des titres ecclésiastiques', e)
   }
 }
 
-onMounted(() => {
-  loadTitles()
-  if (isEdit.value) loadMember()
+async function loadMember() {
+  loading.value = true
+  try {
+    const { data } = await MembersAPI.get(route.params.id)
+    const member = data.data ?? data
+    
+    form.value = {
+      first_name: member.first_name || '',
+      last_name: member.last_name || '',
+      gender: member.gender || '',
+      phone: member.phone || '',
+      email: member.email || '',
+      ecclesiastical_title_id: member.ecclesiastical_title_id || '',
+      birth_date: member.birth_date ? member.birth_date.slice(0, 10) : '',
+      baptized: member.baptized !== undefined ? !!member.baptized : null,
+    }
+    
+    if (member.profile_picture) {
+      imagePreview.value = member.profile_picture
+    }
+  } catch (e) {
+    error.value = "Impossible de charger les informations du membre."
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onSubmit() {
+  saving.value = true
+  error.value = ''
+  fieldErrors.value = {}
+
+  const payload = new FormData()
+  Object.entries(form.value).forEach(([k, v]) => {
+    if (k === 'baptized') {
+      payload.append(k, v ? '1' : '0')
+    } else if (v !== null && v !== undefined && v !== '') {
+      payload.append(k, v)
+    }
+  })
+  
+  if (imageFile.value) {
+    payload.append('profile_picture', imageFile.value)
+  }
+  
+  // Auto-filled church_id from auth user
+  const churchId = auth.churchId || auth.user?.church_id || ''
+  payload.append('church_id', churchId)
+
+  try {
+    if (isEdit.value) {
+      // Laravel method spoofing - always POST with _method=PUT for multipart uploads
+      payload.append('_method', 'PUT')
+      await MembersAPI.updateForm(route.params.id, payload)
+    } else {
+      await MembersAPI.createForm(payload)
+    }
+    router.push({ name: 'members' })
+  } catch (e) {
+    if (e.response?.status === 422) {
+      fieldErrors.value = e.response.data.errors || {}
+      const first = Object.values(fieldErrors.value)[0]
+      error.value = first?.[0] || 'Veuillez corriger les champs en surbrillance.'
+    } else {
+      error.value = e.response?.data?.message || "Une erreur s'est produite. Veuillez réessayer."
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadTitles()
+  if (isEdit.value) {
+    await loadMember()
+  }
 })
 </script>
 
 <template>
   <div class="max-w-2xl">
-    <div class="mb-6 border-b border-rule pb-6">
+    <div class="mb-8 border-b border-rule pb-6">
       <p class="text-xs uppercase tracking-[0.16em] text-gold">Registre</p>
       <h1 class="mt-1 font-display text-3xl text-ink-dark">
-        {{ isEdit ? 'Modifier le membre' : 'Ajouter un membre' }}
+        {{ isEdit ? "Modifier le membre" : 'Ajouter un membre' }}
       </h1>
-      <p class="mt-2 text-sm text-ink-dark/50">
-        {{ isEdit ? 'Mettez à jour les informations du membre.' : 'Enregistrez un nouveau membre dans le registre.' }}
+      <p class="mt-1 text-sm text-ink-dark/55">
+        {{ isEdit ? "Mettez à jour les informations du membre." : 'Renseignez les informations du nouveau membre.' }}
       </p>
     </div>
 
-    <div v-if="success" class="mb-5 flex items-center gap-2 rounded-md border border-sage/40 bg-sage/10 px-4 py-3 text-sm text-sage">
-      <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      {{ success }}
-    </div>
+    <div v-if="loading" class="py-10 text-center text-ink-dark/40">Chargement…</div>
 
-    <div v-if="error" class="mb-5 rounded-md border border-rust/40 bg-rust/10 px-4 py-3 text-sm text-rust">
-      {{ error }}
-    </div>
+    <form v-else class="space-y-5 rounded-lg border border-rule bg-white p-6" @submit.prevent="onSubmit">
+      <p v-if="error" class="rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
+        {{ error }}
+      </p>
 
-    <form class="space-y-5 rounded-lg border border-rule bg-white p-6" @submit.prevent="onSubmit">
       <!-- Profile picture -->
       <div>
         <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
           Photo de profil
+          <span class="ml-1 normal-case text-ink-dark/35">(optionnel — jpeg, png, max 2 Mo)</span>
         </label>
         <div class="flex items-center gap-4">
-          <div class="h-16 w-16 overflow-hidden rounded-full border border-rule bg-parchment-dark/30">
-            <img v-if="picturePreview" :src="picturePreview" alt="Aperçu" class="h-full w-full object-cover" />
-            <div v-else class="flex h-full w-full items-center justify-center text-ink-dark/30">
-              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M4 16l4.5-4.5a3 3 0 014 0L20 19M14 7a2 2 0 11-4 0 5 5 0 01-4 0 2 2 0 010-4z" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </div>
+          <div v-if="imagePreview" class="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-rule bg-parchment-dark">
+            <img :src="imagePreview" alt="Aperçu" class="h-full w-full object-cover" />
           </div>
-          <input type="file" accept="image/jpeg,image/png,image/jpg" @change="onPictureChange" class="text-sm text-ink-dark/60 file:mr-3 file:rounded-md file:border-0 file:bg-gold/10 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-ink-dark hover:file:bg-gold/20" />
+          <div v-else class="h-16 w-16 shrink-0 flex items-center justify-center rounded-md border border-dashed border-rule bg-parchment-dark text-ink-dark/30">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/jpg"
+            :disabled="saving"
+            @change="onImageChange"
+            class="block text-sm text-ink-dark/60 file:mr-3 file:rounded-md file:border-0 file:bg-parchment-dark file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-ink-dark hover:file:bg-rule disabled:opacity-60 cursor-pointer"
+          />
         </div>
         <p v-if="fieldErrors.profile_picture" class="mt-1 text-xs text-rust">{{ fieldErrors.profile_picture[0] }}</p>
       </div>
 
-      <!-- First name + Last name -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <!-- First name & Last name -->
+      <div class="grid gap-5 sm:grid-cols-2">
         <div>
-          <label for="first_name" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Prénom
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+            Prénom *
           </label>
           <input
-            id="first_name"
             v-model="form.first_name"
             type="text"
             required
-            :disabled="submitting"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-            placeholder="Jean"
+            :disabled="saving"
+            class="w-full rounded-md border px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.first_name ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
+            placeholder="ex. Jean"
           />
           <p v-if="fieldErrors.first_name" class="mt-1 text-xs text-rust">{{ fieldErrors.first_name[0] }}</p>
         </div>
         <div>
-          <label for="last_name" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Nom de famille
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+            Nom *
           </label>
           <input
-            id="last_name"
             v-model="form.last_name"
             type="text"
             required
-            :disabled="submitting"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-            placeholder="Pierre"
+            :disabled="saving"
+            class="w-full rounded-md border px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.last_name ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
+            placeholder="ex. Baptiste"
           />
           <p v-if="fieldErrors.last_name" class="mt-1 text-xs text-rust">{{ fieldErrors.last_name[0] }}</p>
         </div>
       </div>
 
-      <!-- Gender + Ecclesiastical title -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <!-- Gender & Ecclesiastical Title -->
+      <div class="grid gap-5 sm:grid-cols-2">
         <div>
           <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Genre
+            Genre *
           </label>
-          <div class="flex gap-4">
-            <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
-              <input type="radio" v-model="form.gender" value="M" :disabled="submitting" class="text-gold focus:ring-gold" />
-              Masculin
-            </label>
-            <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
-              <input type="radio" v-model="form.gender" value="F" :disabled="submitting" class="text-gold focus:ring-gold" />
-              Féminin
-            </label>
-          </div>
+          <select
+            v-model="form.gender"
+            required
+            :disabled="saving"
+            class="w-full rounded-md border bg-white px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.gender ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
+          >
+            <option value="" disabled>Sélectionner le genre</option>
+            <option value="M">Masculin</option>
+            <option value="F">Féminin</option>
+          </select>
           <p v-if="fieldErrors.gender" class="mt-1 text-xs text-rust">{{ fieldErrors.gender[0] }}</p>
         </div>
         <div>
-          <label for="ecclesiastical_title_id" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Titre ecclésiastique
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+            Titre ecclésiastique *
           </label>
           <select
-            id="ecclesiastical_title_id"
             v-model="form.ecclesiastical_title_id"
             required
-            :disabled="submitting"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
+            :disabled="saving"
+            class="w-full rounded-md border bg-white px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.ecclesiastical_title_id ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
           >
-            <option value="" disabled>Sélectionner…</option>
-            <option v-for="t in titles" :key="t.id" :value="t.id">{{ t.name }}</option>
+            <option value="" disabled>Sélectionner un titre</option>
+            <option v-for="t in titles" :key="t.id" :value="t.id">
+              {{ t.name }}
+            </option>
           </select>
           <p v-if="fieldErrors.ecclesiastical_title_id" class="mt-1 text-xs text-rust">{{ fieldErrors.ecclesiastical_title_id[0] }}</p>
         </div>
       </div>
 
-      <!-- Phone + Email -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <!-- Phone & Email -->
+      <div class="grid gap-5 sm:grid-cols-2">
         <div>
-          <label for="phone" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
             Téléphone
           </label>
           <input
-            id="phone"
             v-model="form.phone"
             type="tel"
-            :disabled="submitting"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-            placeholder="37090000"
+            :disabled="saving"
+            class="w-full rounded-md border px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.phone ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
+            placeholder="ex. 48242568"
           />
           <p v-if="fieldErrors.phone" class="mt-1 text-xs text-rust">{{ fieldErrors.phone[0] }}</p>
         </div>
         <div>
-          <label for="email" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Email
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+            Adresse Email
           </label>
           <input
-            id="email"
             v-model="form.email"
             type="email"
-            :disabled="submitting"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-            placeholder="jean.pierre@email.com"
+            :disabled="saving"
+            class="w-full rounded-md border px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.email ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
+            placeholder="ex. jean.baptiste@example.com"
           />
           <p v-if="fieldErrors.email" class="mt-1 text-xs text-rust">{{ fieldErrors.email[0] }}</p>
         </div>
       </div>
 
-      <!-- Birth date + Baptized -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <!-- Birth Date & Baptized -->
+      <div class="grid gap-5 sm:grid-cols-2">
         <div>
-          <label for="birth_date" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Date de naissance
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+            Date de naissance *
           </label>
           <input
-            id="birth_date"
             v-model="form.birth_date"
             type="date"
-            :required="!isEdit"
-            :disabled="submitting"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
+            required
+            :disabled="saving"
+            class="w-full rounded-md border px-3.5 py-2.5 outline-none transition focus:ring-1 disabled:opacity-60"
+            :class="fieldErrors.birth_date ? 'border-rust focus:border-rust focus:ring-rust' : 'border-rule focus:border-gold focus:ring-gold'"
           />
           <p v-if="fieldErrors.birth_date" class="mt-1 text-xs text-rust">{{ fieldErrors.birth_date[0] }}</p>
         </div>
         <div>
           <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Baptisé
+            Baptisé(e) *
           </label>
-          <label class="flex items-center gap-2.5 pt-2 text-sm text-ink-dark/70 cursor-pointer">
-            <input type="checkbox" v-model="form.baptized" :disabled="submitting" class="h-4 w-4 rounded border-rule text-gold focus:ring-gold" />
-            Ce membre a été baptisé
-          </label>
+          <div class="flex items-center gap-6 h-[46px]">
+            <label class="inline-flex items-center cursor-pointer">
+              <input
+                v-model="form.baptized"
+                type="radio"
+                :value="true"
+                required
+                :disabled="saving"
+                class="h-4 w-4 border-rule text-gold focus:ring-gold"
+              />
+              <span class="ml-2 text-sm text-ink-dark">Oui</span>
+            </label>
+            <label class="inline-flex items-center cursor-pointer">
+              <input
+                v-model="form.baptized"
+                type="radio"
+                :value="false"
+                required
+                :disabled="saving"
+                class="h-4 w-4 border-rule text-gold focus:ring-gold"
+              />
+              <span class="ml-2 text-sm text-ink-dark">Non</span>
+            </label>
+          </div>
           <p v-if="fieldErrors.baptized" class="mt-1 text-xs text-rust">{{ fieldErrors.baptized[0] }}</p>
         </div>
       </div>
 
-      <!-- Buttons -->
-      <div class="flex justify-end gap-3 pt-2">
+      <!-- Action Buttons -->
+      <div class="flex justify-end gap-3 border-t border-rule pt-5">
         <button
           type="button"
           @click="router.push({ name: 'members' })"
-          class="rounded-md px-4 py-2.5 text-sm font-medium text-ink-dark/60 transition hover:text-ink-dark"
+          class="rounded-md px-4 py-2.5 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
         >
           Annuler
         </button>
         <button
           type="submit"
-          :disabled="submitting"
-          class="flex items-center justify-center gap-2 rounded-md bg-gold px-5 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="saving"
+          class="rounded-md bg-gold px-5 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-60"
         >
-          <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          {{ submitting ? 'Enregistrement…' : (isEdit ? 'Modifier' : 'Ajouter') }}
+          {{ saving ? 'Enregistrement…' : isEdit ? 'Enregistrer les modifications' : "Créer le membre" }}
         </button>
       </div>
     </form>

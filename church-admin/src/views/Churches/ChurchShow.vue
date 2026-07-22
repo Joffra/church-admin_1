@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { ChurchesAPI, MembersAPI } from '../../services/api'
+import { ChurchesAPI, PastorsAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import StatusBadge from '../../components/StatusBadge.vue'
 import MapPicker from '../../components/MapPicker.vue'
@@ -9,6 +9,7 @@ import MapPicker from '../../components/MapPicker.vue'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
 const church = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -16,21 +17,12 @@ const confirmArchive = ref(false)
 const archiving = ref(false)
 const togglingStatus = ref(false)
 
-// Change pastor modal state
-const showPastorModal = ref(false)
-const pastors = ref([])
-const loadingPastors = ref(false)
+// Change pastor state
+const showChangePastorModal = ref(false)
 const selectedPastorId = ref('')
-const changingPastor = ref(false)
+const availablePastors = ref([])
+const submittingPastor = ref(false)
 const pastorError = ref('')
-
-// Change admin modal state
-const showAdminModal = ref(false)
-const members = ref([])
-const loadingMembers = ref(false)
-const selectedAdminId = ref('')
-const changingAdmin = ref(false)
-const adminError = ref('')
 
 async function load() {
   loading.value = true
@@ -74,74 +66,36 @@ async function onArchive() {
   }
 }
 
-// ---- Change pastor ----
-async function openPastorModal() {
-  showPastorModal.value = true
+async function openChangePastorModal() {
   pastorError.value = ''
-  selectedPastorId.value = ''
-  loadingPastors.value = true
+  selectedPastorId.value = church.value?.pastor?.id || ''
+  showChangePastorModal.value = true
   try {
-    const { data } = await MembersAPI.availablePastors()
-    pastors.value = Array.isArray(data) ? data : (data.data ?? [])
+    const { data } = await PastorsAPI.list()
+    availablePastors.value = data.data ?? data ?? []
   } catch (e) {
-    pastorError.value = 'Impossible de charger la liste des pasteurs.'
-  } finally {
-    loadingPastors.value = false
+    pastorError.value = "Impossible de charger les pasteurs disponibles."
   }
 }
 
-async function onChangePastor() {
-  if (!selectedPastorId.value) {
-    pastorError.value = 'Veuillez sélectionner un pasteur.'
-    return
-  }
-  changingPastor.value = true
+function closeChangePastorModal() {
+  showChangePastorModal.value = false
+  selectedPastorId.value = ''
+  availablePastors.value = []
+}
+
+async function submitChangePastor() {
+  if (!selectedPastorId.value) return
+  submittingPastor.value = true
   pastorError.value = ''
   try {
     await ChurchesAPI.changePastor(church.value.id, selectedPastorId.value)
-    showPastorModal.value = false
-    // Reload the full church data so pastor AND admin info are both fresh
-    // (the changePastor response only loads headPastor, not churchAdmin)
-    await load()
+    showChangePastorModal.value = false
+    await load() // reload church data
   } catch (e) {
-    pastorError.value = e.response?.data?.message || 'Impossible de changer le pasteur responsable.'
+    pastorError.value = e.response?.data?.message || "Impossible de modifier le pasteur responsable."
   } finally {
-    changingPastor.value = false
-  }
-}
-
-// ---- Change admin ----
-async function openAdminModal() {
-  showAdminModal.value = true
-  adminError.value = ''
-  selectedAdminId.value = ''
-  loadingMembers.value = true
-  try {
-    const { data } = await MembersAPI.list()
-    members.value = Array.isArray(data) ? data : (data.data ?? [])
-  } catch (e) {
-    adminError.value = 'Impossible de charger la liste des membres.'
-  } finally {
-    loadingMembers.value = false
-  }
-}
-
-async function onChangeAdmin() {
-  if (!selectedAdminId.value) {
-    adminError.value = 'Veuillez sélectionner un membre.'
-    return
-  }
-  changingAdmin.value = true
-  adminError.value = ''
-  try {
-    await ChurchesAPI.changeAdmin(church.value.id, selectedAdminId.value)
-    showAdminModal.value = false
-    // Reload the full church data so admin info is fresh
-    await load()
-  } catch (e) {
-    adminError.value = e.response?.data?.message || "Impossible de changer l'administrateur de l'église."
-  } finally {
-    changingAdmin.value = false
+    submittingPastor.value = false
   }
 }
 
@@ -151,20 +105,6 @@ function getField(church, field) {
 
 function getStatus(church) {
   return church?.structure?.status || church?.status || 'active'
-}
-
-function pastorName(c) {
-  if (!c?.pastor?.id) return '—'
-  return `${c.pastor.first_name ?? ''} ${c.pastor.last_name ?? ''}`.trim()
-}
-
-function adminName(c) {
-  if (!c?.admin?.id) return '—'
-  return `${c.admin.first_name ?? ''} ${c.admin.last_name ?? ''}`.trim()
-}
-
-function memberFullName(m) {
-  return `${m.first_name ?? ''} ${m.last_name ?? ''}`.trim()
 }
 
 onMounted(load)
@@ -186,7 +126,6 @@ onMounted(load)
           <p class="text-xs uppercase tracking-[0.16em] text-gold">Fiche détaillée</p>
           <h1 class="mt-1 font-display text-3xl text-ink-dark">{{ getField(church, 'name') }}</h1>
           <button
-            v-if="auth.canManageChurches"
             @click="toggleStatus"
             :disabled="togglingStatus"
             title="Cliquer pour changer le statut"
@@ -194,11 +133,8 @@ onMounted(load)
           >
             <StatusBadge :status="getStatus(church)" />
           </button>
-          <div v-else class="mt-2">
-            <StatusBadge :status="getStatus(church)" />
-          </div>
         </div>
-        <div v-if="auth.canManageChurches" class="flex gap-2">
+        <div class="flex gap-2">
           <RouterLink
             :to="{ name: 'church-edit', params: { id: church.id } }"
             class="rounded-md border border-rule bg-white px-4 py-2 text-sm font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"
@@ -237,62 +173,32 @@ onMounted(load)
           <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Coordonnées GPS</dt>
           <dd class="mt-1 font-mono text-sm text-ink-dark">{{ church.gps_coordinates || '—' }}</dd>
         </div>
-        <!-- Map display moved here for prominence -->
-        <div v-if="church.gps_coordinates" class="col-span-1 sm:col-span-2 mt-1">
-          <MapPicker :model-value="church.gps_coordinates" :readonly="true" />
+        <div>
+          <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Pasteur responsable</dt>
+          <dd class="mt-1 text-sm text-ink-dark flex flex-col items-start gap-1">
+            <span>{{ church.pastor ? `${church.pastor.first_name} ${church.pastor.last_name}` : 'Non assigné' }}</span>
+            <button
+              v-if="auth.canManageChurches"
+              @click="openChangePastorModal"
+              class="text-xs font-semibold text-gold hover:text-gold-light mt-0.5"
+            >
+              Changer le pasteur
+            </button>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Administrateur</dt>
+          <dd class="mt-1 text-sm text-ink-dark">
+            {{ church.admin ? `${church.admin.first_name} ${church.admin.last_name}` : 'Non assigné' }}
+          </dd>
         </div>
       </dl>
 
-      <!-- Personnel section -->
-      <div class="mb-5 rounded-lg border border-rule bg-white p-6">
-        <h2 class="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-dark/45">Personnel</h2>
-
-        <!-- Pastor -->
-        <div class="mb-4 flex items-center justify-between rounded-md border border-rule bg-parchment/40 px-4 py-3">
-          <div>
-            <p class="text-[11px] uppercase tracking-wide text-ink-dark/40">Pasteur responsable</p>
-            <p class="mt-0.5 text-sm font-medium text-ink-dark">{{ pastorName(church) }}</p>
-            <RouterLink
-              v-if="church.pastor?.id"
-              :to="{ name: 'member-show', params: { id: church.pastor.id } }"
-              class="mt-1 inline-block text-xs text-gold hover:underline"
-            >
-              Voir la fiche →
-            </RouterLink>
-          </div>
-          <button
-            v-if="auth.canManageChurches"
-            @click="openPastorModal"
-            class="rounded-md border border-rule bg-white px-3 py-2 text-xs font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"
-          >
-            Changer
-          </button>
-        </div>
-
-        <!-- Admin -->
-        <div class="flex items-center justify-between rounded-md border border-rule bg-parchment/40 px-4 py-3">
-          <div>
-            <p class="text-[11px] uppercase tracking-wide text-ink-dark/40">Administrateur d'église</p>
-            <p class="mt-0.5 text-sm font-medium text-ink-dark">{{ adminName(church) }}</p>
-            <RouterLink
-              v-if="church.admin?.id"
-              :to="{ name: 'member-show', params: { id: church.admin.id } }"
-              class="mt-1 inline-block text-xs text-gold hover:underline"
-            >
-              Voir la fiche →
-            </RouterLink>
-          </div>
-          <button
-            v-if="auth.canManageChurches"
-            @click="openAdminModal"
-            class="rounded-md border border-rule bg-white px-3 py-2 text-xs font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"
-          >
-            Changer
-          </button>
-        </div>
+      <!-- Embedded map -->
+      <div v-if="church.gps_coordinates" class="mb-5">
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Localisation</p>
+        <MapPicker :model-value="church.gps_coordinates" :readonly="true" />
       </div>
-
-
     </div>
 
     <!-- Confirm archive modal -->
@@ -323,79 +229,53 @@ onMounted(load)
 
     <!-- Change pastor modal -->
     <div
-      v-if="showPastorModal"
+      v-if="showChangePastorModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
-      @click.self="showPastorModal = false"
+      @click.self="closeChangePastorModal"
     >
-      <div class="w-full max-w-md rounded-lg bg-white p-6">
-        <h3 class="font-display text-lg text-ink-dark">Changer le pasteur responsable</h3>
-        <p class="mt-1 text-sm text-ink-dark/50">Sélectionnez un pasteur dans la liste.</p>
+      <div class="w-full max-w-sm rounded-lg bg-white p-6">
+        <h3 class="font-display text-lg text-ink-dark">Changer le pasteur</h3>
+        <p class="mt-1 text-sm text-ink-dark/60">
+          Sélectionnez le nouveau pasteur responsable de cette église.
+        </p>
+        
+        <form @submit.prevent="submitChangePastor" class="mt-4 space-y-4">
+          <div>
+            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+              Nouveau pasteur *
+            </label>
+            <select
+              v-model="selectedPastorId"
+              required
+              :disabled="submittingPastor"
+              class="w-full rounded-md border border-rule bg-white px-3 py-2 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60 text-ink-dark"
+            >
+              <option value="" disabled>-- Choisir un pasteur --</option>
+              <option v-for="p in availablePastors" :key="p.id" :value="p.id">
+                {{ p.first_name }} {{ p.last_name }} {{ p.member_code ? `(${p.member_code})` : '' }}
+              </option>
+            </select>
+          </div>
 
-        <p v-if="pastorError" class="mt-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ pastorError }}</p>
+          <p v-if="pastorError" class="text-xs text-rust">{{ pastorError }}</p>
 
-        <div v-if="loadingPastors" class="mt-4 py-6 text-center text-sm text-ink-dark/40">Chargement des pasteurs…</div>
-        <select
-          v-else
-          v-model="selectedPastorId"
-          class="mt-4 w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
-        >
-          <option value="" disabled>Sélectionner un pasteur…</option>
-          <option v-for="p in pastors" :key="p.id" :value="p.id">
-            {{ memberFullName(p) }} — {{ p.member_code }}
-          </option>
-        </select>
-
-        <div class="mt-6 flex justify-end gap-3">
-          <button @click="showPastorModal = false" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">
-            Annuler
-          </button>
-          <button
-            :disabled="changingPastor || !selectedPastorId"
-            @click="onChangePastor"
-            class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-60"
-          >
-            {{ changingPastor ? 'Modification…' : 'Confirmer' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Change admin modal -->
-    <div
-      v-if="showAdminModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
-      @click.self="showAdminModal = false"
-    >
-      <div class="w-full max-w-md rounded-lg bg-white p-6">
-        <h3 class="font-display text-lg text-ink-dark">Changer l'administrateur</h3>
-        <p class="mt-1 text-sm text-ink-dark/50">Sélectionnez un membre dans la liste.</p>
-
-        <p v-if="adminError" class="mt-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ adminError }}</p>
-
-        <div v-if="loadingMembers" class="mt-4 py-6 text-center text-sm text-ink-dark/40">Chargement des membres…</div>
-        <select
-          v-else
-          v-model="selectedAdminId"
-          class="mt-4 w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
-        >
-          <option value="" disabled>Sélectionner un membre…</option>
-          <option v-for="m in members" :key="m.id" :value="m.id">
-            {{ memberFullName(m) }} — {{ m.member_code }}
-          </option>
-        </select>
-
-        <div class="mt-6 flex justify-end gap-3">
-          <button @click="showAdminModal = false" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">
-            Annuler
-          </button>
-          <button
-            :disabled="changingAdmin || !selectedAdminId"
-            @click="onChangeAdmin"
-            class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-60"
-          >
-            {{ changingAdmin ? 'Modification…' : 'Confirmer' }}
-          </button>
-        </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              @click="closeChangePastorModal"
+              class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              :disabled="submittingPastor"
+              class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-60"
+            >
+              {{ submittingPastor ? 'Changement…' : 'Valider' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

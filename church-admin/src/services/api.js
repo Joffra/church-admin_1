@@ -15,6 +15,7 @@ api.interceptors.request.use((config) => {
 })
 
 // If the token is rejected/expired, clear local auth state.
+// (Doesn't redirect here — the router guard handles navigation.)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,8 +35,12 @@ export const AuthAPI = {
   login: (member_code, password) => api.post('/login', { member_code, password }),
   logout: () => api.post('/logout'),
   me: () => api.get('/user'),
+
+  // User Story 3 — Modifier son mot de passe
   changePassword: (current_password, new_password, new_password_confirmation) =>
     api.post('/password/update', { current_password, new_password, new_password_confirmation }),
+
+  // User Story 4 — Réinitialiser son mot de passe (multi-step flow)
   sendResetCode: (email) => api.post('/password/reset/code', { email }),
   verifyResetCode: (email, code) => api.post('/password/reset/code/verify', { email, code }),
 }
@@ -45,78 +50,86 @@ export const AuthAPI = {
 export const ChurchesAPI = {
   list: (params) => api.get('/churches', { params }),
   get: (id) => api.get(`/churches/${id}`),
+  // JSON-only update (basic fields)
   update: (id, data) => api.put(`/churches/${id}`, data),
+  // Status toggle — updated route path
   changeStatus: (id, newStatus) => api.patch(`/churches/${id}/status/change`, { status: newStatus }),
-  changePastor: (id, pastorMemberId) => api.put(`/churches/${id}/pastor/change`, { pastor_member_id: pastorMemberId }),
-  changeAdmin: (id, adminMemberId) => api.put(`/churches/${id}/admin/change`, { admin_member_id: adminMemberId }),
+  // FormData create (supports church_image file upload + pastor/admin fields)
   createForm: (formData) => api.post('/churches', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  // FormData update with method spoofing (PUT via POST + _method=PUT)
   updateForm: (id, formData) => api.post(`/churches/${id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   remove: (id) => api.delete(`/churches/${id}`),
+  // Change head pastor — updated route path: /churches/{id}/pastor/change
+  changePastor: (id, pastorMemberId) => api.put(`/churches/${id}/pastor/change`, { pastor_member_id: pastorMemberId }),
 }
 
-// ---- Members ----
+export const EcclesiasticalTitlesAPI = {
+  list: (params) => api.get('/ecclesiastical-titles', { params }),
+}
+
+// ---- Members (now PAGINATED with SearchMemberRequest) ----
 
 export const MembersAPI = {
+  // Paginated — supports ?search=...&per_page=15&page=1&sort_by=last_name&order_by=asc&church_id=...&ecclesiastical_title_id=...
   list: (params) => api.get('/members', { params }),
   get: (id) => api.get(`/members/${id}`),
+  // FormData create (supports profile_picture upload)
   createForm: (formData) => api.post('/members', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  // FormData update with method spoofing
   updateForm: (id, formData) => api.post(`/members/${id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   remove: (id) => api.delete(`/members/${id}`),
+  // Sanction a member (reason, description?, ends_at?)
   sanction: (id, data) => api.post(`/members/${id}/sanction`, data),
-  liftSanction: (id, lifted_reason) => api.patch(`/members/${id}/sanction/lift`, { lifted_reason }),
-  transfer: (id, new_church_id) => api.patch(`/members/${id}/transfer`, { new_church_id }),
-  availablePastors: () => api.get('/pastors'),
+  // Lift a sanction (lifted_reason)
+  liftSanction: (id, data) => api.post(`/members/${id}/sanction/lift`, data),
+  // Transfer member to another church (new_church_id)
+  transfer: (id, data) => api.patch(`/members/${id}/transfer`, data),
+}
+
+// ---- Pastors (members with ecclesiastical title 'Pasteur') ----
+
+export const PastorsAPI = {
+  list: () => api.get('/pastors'),
 }
 
 // ---- Users ----
 
 export const UsersAPI = {
+  // Paginated — supports ?search=...&per_page=20
   list: (params) => api.get('/users', { params }),
+  // Suspend/deactivate a user account
   suspend: (id) => api.patch(`/users/${id}/suspend`),
+  // Activate a user account
   activate: (id) => api.patch(`/users/${id}/activate`),
+  // Admin resets a user's password (sends temp password via email)
   resetPassword: (id) => api.patch(`/users/${id}/password/reset`),
+  // Promote a user to church_admin (mission_admin only)
+  promote: (id) => api.patch(`/users/${id}/promote`),
 }
 
 // ---- Sanctions ----
 
 export const SanctionsAPI = {
+  // Paginated — supports ?search=...&status=active|lifted&per_page=15
   list: (params) => api.get('/sanctions', { params }),
 }
 
-// ---- Ecclesiastical Titles (for member creation) ----
+// ---- Missions (public mission info) ----
 
-export const EcclesiasticalTitlesAPI = {
-  list: () => api.get('/ecclesiastical-titles'),
+export const MissionsAPI = {
+  get: () => api.get('/missions'),
 }
 
-// ---- Titles (committee titles, for committee management) ----
+// ---- Contact (public contact form) ----
 
-export const TitlesAPI = {
-  list: () => api.get('/titles'),
-  availableFor: (committeeId) => api.get(`/committees/${committeeId}/available-titles`),
-}
-
-// ---- Permissions ----
-
-export const PermissionsAPI = {
-  list: () => api.get('/permissions'),
-}
-
-// ---- Committees ----
-
-export const CommitteesAPI = {
-  list: () => api.get('/committees'),
-  get: (id) => api.get(`/committees/${id}`),
-  showByStructure: (structureId) => api.get(`/structures/${structureId}/committee`),
-  update: (id, data) => api.put(`/committees/${id}`, data),
-  addMember: (id, data) => api.post(`/committees/${id}/members`, data),
-  removeMember: (id, memberId) => api.delete(`/committees/${id}/members`, { data: { member_id: memberId } }),
+export const ContactAPI = {
+  send: (data) => api.post('/contact', data),
 }
