@@ -23,44 +23,19 @@ export const useAuthStore = defineStore('auth', {
     fullName: (state) =>
       state.user ? `${state.user.first_name ?? ''} ${state.user.last_name ?? ''}`.trim() : '',
     role: (state) => state.user?.role || null,
-
-    // Role checks — four roles: mission_admin > church_admin > secretaire > utilisateur
     isMissionAdmin: (state) => state.user?.role === 'mission_admin',
-    isChurchAdmin:  (state) => state.user?.role === 'church_admin',
-    isSecretaire:   (state) => state.user?.role === 'secretaire',
-    isUtilisateur:  (state) => state.user?.role === 'utilisateur',
-
-    // "isAdmin" = has elevated access (not a plain viewer)
+    isChurchAdmin: (state) => state.user?.role === 'church_admin',
+    // "Admin" in the CU spec = valid for both church_admin and mission_admin
     isAdmin: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-
-    // Has ANY elevated role (sees more than the public read-only view)
-    hasElevatedRole: (state) =>
-      ['mission_admin', 'church_admin', 'secretaire'].includes(state.user?.role),
-
     churchId: (state) => state.user?.church_id || null,
-
-    // Church management: create / edit / archive churches, change pastor — mission_admin only
+    // Can manage churches (add/change pastor, create church) — mission_admin only
     canManageChurches: (state) => state.user?.role === 'mission_admin',
-
-    // Status toggle on churches — mission_admin only
-    canToggleChurchStatus: (state) => state.user?.role === 'mission_admin',
-
-    // User management: suspend/activate/reset password — admin roles only
+    // Can manage users (suspend/activate/reset password) — both admin roles
     canManageUsers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-
-    // Member CRUD (add/edit/archive/transfer) — church_admin + secretaire
-    canManageMembers: (state) =>
-      ['mission_admin', 'church_admin', 'secretaire'].includes(state.user?.role),
-
-    // Sanctioning members — church_admin + secretaire
-    canSanctionMembers: (state) =>
-      ['mission_admin', 'church_admin', 'secretaire'].includes(state.user?.role),
-
-    // Viewing sanctions list — admins only
-    canViewSanctions: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-
-    // Plain read-only user — can only view, never modify
-    isReadOnly: (state) => state.user?.role === 'utilisateur',
+    // Can manage members (add/edit/sanction/transfer/archive) — church_admin + secretary
+    canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // Can sanction members — church_admin + secretary
+    canSanctionMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
   },
 
   actions: {
@@ -95,7 +70,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         await AuthAPI.logout()
       } catch {
-        // even if the request fails, clear local state
+        // even if the request fails, clear local state so the user isn't stuck
       }
       this.token = null
       this.user = null

@@ -8,18 +8,8 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
+// Collapsible "Mot de passe" section — expanded if we're already on a password route
 const passwordExpanded = ref(route.path.startsWith('/password'))
-
-// Role label shown in the sidebar footer
-const roleLabel = computed(() => {
-  const map = {
-    mission_admin: 'Admin Mission',
-    church_admin:  'Admin Église',
-    secretaire:    'Secrétaire',
-    utilisateur:   'Utilisateur',
-  }
-  return map[auth.role] || auth.role || ''
-})
 
 // Role-based nav groups
 const navGroups = computed(() => {
@@ -32,32 +22,21 @@ const navGroups = computed(() => {
     },
   ]
 
-  // Registre section
-  const registreItems = []
+  // Registre — churches visible to all, members visible to all
+  const registreItems = [
+    { to: '/churches', label: 'Églises', icon: 'building' },
+    { to: '/members', label: 'Membres', icon: 'users' },
+  ]
 
-  // Churches label depends on role
-  if (auth.canManageChurches) {
-    registreItems.push({ to: '/churches', label: 'Gérer les églises', icon: 'building' })
-  } else {
-    registreItems.push({ to: '/churches', label: 'Voir les églises', icon: 'building' })
-  }
-
-  // Members label depends on role
-  if (auth.canManageMembers) {
-    registreItems.push({ to: '/members', label: 'Gérer les membres', icon: 'users' })
-  } else {
-    registreItems.push({ to: '/members', label: 'Voir les membres', icon: 'users' })
-  }
-
-  // Sanctions — admin roles only
-  if (auth.canViewSanctions) {
+  // Sanctions — admin only
+  if (auth.isAdmin) {
     registreItems.push({ to: '/sanctions', label: 'Sanctions', icon: 'shield' })
   }
 
   groups.push({ label: 'Registre', items: registreItems })
 
-  // Administration section — admin roles only
-  if (auth.canManageUsers) {
+  // Administration — admin only
+  if (auth.isAdmin) {
     groups.push({
       label: 'Administration',
       items: [
@@ -137,52 +116,85 @@ async function onLogout() {
             ? 'bg-white/10 text-parchment font-medium'
             : 'text-parchment/65 hover:bg-white/5 hover:text-parchment'"
         >
-          <span
-            class="h-1.5 w-1.5 rounded-full transition-colors"
-            :class="passwordExpanded ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
-          ></span>
-          Mot de passe
+          <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="flex-1 text-left">Mot de passe</span>
           <svg
             viewBox="0 0 24 24"
-            class="ml-auto h-3.5 w-3.5 shrink-0 transition-transform"
-            :class="passwordExpanded ? 'rotate-180' : ''"
+            class="h-3.5 w-3.5 transition-transform duration-200"
+            :class="passwordExpanded ? 'rotate-90' : ''"
             fill="none" stroke="currentColor" stroke-width="2"
           >
-            <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </button>
-        <ul v-if="passwordExpanded" class="mt-0.5 space-y-0.5 pl-4">
-          <li>
-            <RouterLink
-              to="/password/change"
-              class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
-              :class="route.path === '/password/change'
-                ? 'bg-white/10 text-parchment font-medium'
-                : 'text-parchment/65 hover:bg-white/5 hover:text-parchment'"
-            >
-              <span class="h-1.5 w-1.5 rounded-full bg-transparent group-hover:bg-gold/50"></span>
-              Changer le mot de passe
-            </RouterLink>
-          </li>
-        </ul>
+
+        <transition
+          enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+          leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+          enter-from-class="max-h-0 opacity-0"
+          enter-to-class="max-h-40 opacity-100"
+          leave-from-class="max-h-40 opacity-100"
+          leave-to-class="max-h-0 opacity-0"
+        >
+          <ul v-if="passwordExpanded" class="mt-0.5 ml-7 space-y-0.5 border-l border-white/10 pl-3">
+            <li>
+              <RouterLink
+                to="/password/change"
+                class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+                :class="route.name === 'password-change'
+                  ? 'bg-white/10 text-parchment font-medium'
+                  : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
+              >
+                <span
+                  class="h-1.5 w-1.5 rounded-full transition-colors"
+                  :class="route.name === 'password-change' ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
+                ></span>
+                Modifier
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/password/reset"
+                class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+                :class="route.name === 'password-reset'
+                  ? 'bg-white/10 text-parchment font-medium'
+                  : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
+              >
+                <span
+                  class="h-1.5 w-1.5 rounded-full transition-colors"
+                  :class="route.name === 'password-reset' ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
+                ></span>
+                Réinitialiser
+              </RouterLink>
+            </li>
+          </ul>
+        </transition>
       </div>
     </nav>
 
-    <!-- User footer -->
     <div class="mx-6 border-t border-white/10"></div>
-    <div class="flex items-center justify-between px-5 py-4">
-      <div class="min-w-0">
-        <p class="truncate text-sm font-medium text-parchment">{{ auth.fullName }}</p>
-        <p class="text-[11px] text-gold/70">{{ roleLabel }}</p>
+    <div class="flex items-center gap-3 px-6 py-5">
+      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/20 text-xs font-semibold text-gold">
+        {{ (auth.user?.first_name?.[0] || auth.user?.member_code?.[0] || 'A').toUpperCase() }}
+      </div>
+      <div class="min-w-0 flex-1 text-sm">
+        <p class="truncate leading-tight text-parchment/90">
+          {{ auth.fullName || auth.user?.member_code || 'Administrateur' }}
+        </p>
+        <p class="text-xs text-parchment/40">
+          {{ auth.role === 'mission_admin' ? 'Admin Mission' : auth.role === 'church_admin' ? 'Admin Église' : auth.user?.role || 'Connecté' }}
+        </p>
       </div>
       <button
         @click="onLogout"
         title="Se déconnecter"
-        class="ml-3 shrink-0 rounded-md p-1.5 text-parchment/50 transition hover:bg-white/10 hover:text-parchment"
+        class="shrink-0 rounded-md p-1.5 text-parchment/40 transition hover:bg-white/5 hover:text-gold"
       >
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-          <path d="M17 16l4-4m0 0l-4-4m4 4H7" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke-linecap="round" stroke-linejoin="round" />
+        <svg viewBox="0 0 24 24" class="h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </button>
     </div>
