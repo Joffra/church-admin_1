@@ -8,15 +8,6 @@ const routes = [
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
   { path: '/', name: 'dashboard', component: Dashboard },
 
-  // ---- Profile shortcut → redirect to logged-in user's member page ----
-  { path: '/profile', name: 'profile', redirect: () => {
-      const auth = useAuthStore()
-      const memberId = auth.user?.member_id
-      if (memberId) return { name: 'member-show', params: { id: memberId } }
-      return { name: 'dashboard' }
-    }
-  },
-
   // ---- Churches ----
   { path: '/churches', name: 'churches', component: () => import('../views/Churches/ChurchList.vue') },
   { path: '/churches/new', name: 'church-create', component: () => import('../views/Churches/ChurchForm.vue'), meta: { roles: ['mission_admin'] } },
