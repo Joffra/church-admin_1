@@ -22,20 +22,43 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     fullName: (state) =>
       state.user ? `${state.user.first_name ?? ''} ${state.user.last_name ?? ''}`.trim() : '',
-    role: (state) => state.user?.role || null,
+    role: (state) => state.user?.role || '',
     isMissionAdmin: (state) => state.user?.role === 'mission_admin',
     isChurchAdmin: (state) => state.user?.role === 'church_admin',
-    // "Admin" in the CU spec = valid for both church_admin and mission_admin
+    // Admin = both mission_admin and church_admin
     isAdmin: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    churchId: (state) => state.user?.church_id || null,
-    // Can manage churches (add/change pastor, create church) — mission_admin only
-    canManageChurches: (state) => state.user?.role === 'mission_admin',
-    // Can manage users (suspend/activate/reset password) — both admin roles
+
+    // ---- User management (Itération 1) ----
+    // view-users gate: mission_admin (has user:view-any), church_admin (has user:view-any)
+    // manage-users gate: mission_admin (always true), church_admin (same church)
     canManageUsers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    // Can manage members (add/edit/sanction/transfer/archive) — church_admin + secretary
+
+    // ---- Church management ----
+    // manage-churches gate: requires church:manage permission
+    // mission_admin has it, church_admin does NOT
+    canManageChurches: (state) => state.user?.role === 'mission_admin',
+
+    // ---- Member management (Itération 1) ----
+    // view-members gate: mission_admin (always true), church_admin (own church), others → 403
+    canViewMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // store(): manage-members gate passes for mission_admin (member:create-restricted)
+    // BUT controller explicitly returns 403 for mission_admin → church_admin only
+    // Backend store() method explicitly returns 403 for mission_admin:
+    //   "Action restreinte. Création pasteur responsable et admin uniquement autorisée."
+    // Only church_admin can create regular members.
+    canCreateMembers: (state) => state.user?.role === 'church_admin',
+    // update()/destroy()/sanction()/transfer(): gate passes for both roles
     canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
-    // Can sanction members — church_admin + secretary
+    // sanction-members gate: mission_admin → true (before perm check),
+    // church_admin → has member:sanction (own church)
     canSanctionMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    // transfer-members gate: mission_admin → true,
+    // church_admin → does NOT have member:transfer → false
+    canTransferMembers: (state) => state.user?.role === 'mission_admin',
+
+    userChurchId: (state) => state.user?.church_id || null,
+    // The member_id of the currently logged-in user (login response provides this)
+    userMemberId: (state) => state.user?.member_id || null,
   },
 
   actions: {

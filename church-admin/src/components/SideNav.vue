@@ -8,39 +8,46 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-// Collapsible "Mot de passe" section — expanded if we're already on a password route
+function roleLabel(role) {
+  if (role === 'mission_admin') return 'Admin Mission'
+  if (role === 'church_admin') return 'Admin Église'
+  if (role === 'user') return 'Utilisateur'
+  return role || 'Connecté'
+}
+
+// Collapsible sections
 const passwordExpanded = ref(route.path.startsWith('/password'))
 
-// Role-based nav groups
 const navGroups = computed(() => {
   const groups = [
     {
       label: 'Vue d\'ensemble',
       items: [
-        { to: '/', label: 'Tableau de bord', icon: 'grid' },
+        { to: '/', label: 'Tableau de bord' },
+      ],
+    },
+    {
+      label: 'Registre',
+      items: [
+        // All authenticated users can view church list + details
+        { to: '/churches', label: 'Églises' },
+        // Admins can browse full member list; regular users see /profile (auth store only — no API call)
+        ...(auth.canViewMembers
+          ? [{ to: '/members', label: 'Membres' }]
+          : [{ to: '/profile', label: 'Mon profil' }]
+        ),
+        // Only admins can view sanctions
+        ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
       ],
     },
   ]
 
-  // Registre — churches visible to all, members visible to all
-  const registreItems = [
-    { to: '/churches', label: 'Églises', icon: 'building' },
-    { to: '/members', label: 'Membres', icon: 'users' },
-  ]
-
-  // Sanctions — admin only
-  if (auth.isAdmin) {
-    registreItems.push({ to: '/sanctions', label: 'Sanctions', icon: 'shield' })
-  }
-
-  groups.push({ label: 'Registre', items: registreItems })
-
-  // Administration — admin only
-  if (auth.isAdmin) {
+  // Administration section only for admins
+  if (auth.canManageUsers) {
     groups.push({
       label: 'Administration',
       items: [
-        { to: '/users', label: 'Utilisateurs', icon: 'user-cog' },
+        { to: '/users', label: 'Utilisateurs' },
       ],
     })
   }
@@ -51,8 +58,10 @@ const navGroups = computed(() => {
 function isActive(path) {
   if (path === '/churches') return route.path.startsWith('/churches')
   if (path === '/members') return route.path.startsWith('/members')
-  if (path === '/users') return route.path.startsWith('/users')
   if (path === '/sanctions') return route.path.startsWith('/sanctions')
+  if (path === '/users') return route.path.startsWith('/users')
+  // /profile: exact match
+  if (path === '/profile') return route.path === '/profile'
   return route.path === path
 }
 
@@ -86,7 +95,7 @@ async function onLogout() {
           {{ group.label }}
         </p>
         <ul class="space-y-0.5">
-          <li v-for="item in group.items" :key="item.to">
+          <li v-for="item in group.items.filter(i => !i.show || i.show())" :key="item.to">
             <RouterLink
               :to="item.to"
               class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
@@ -184,9 +193,7 @@ async function onLogout() {
         <p class="truncate leading-tight text-parchment/90">
           {{ auth.fullName || auth.user?.member_code || 'Administrateur' }}
         </p>
-        <p class="text-xs text-parchment/40">
-          {{ auth.role === 'mission_admin' ? 'Admin Mission' : auth.role === 'church_admin' ? 'Admin Église' : auth.user?.role || 'Connecté' }}
-        </p>
+        <p class="text-xs text-parchment/40">{{ roleLabel(auth.user?.role) }}</p>
       </div>
       <button
         @click="onLogout"

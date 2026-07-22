@@ -1,173 +1,220 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import { UsersAPI } from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
+
+const auth = useAuthStore()
 
 const users = ref([])
 const loading = ref(true)
 const error = ref('')
 const successMessage = ref('')
 const search = ref('')
+
+// Pagination state
 const currentPage = ref(1)
-const perPage = ref(10)
-const meta = ref({
+const pagination = ref({
   current_page: 1,
   last_page: 1,
-  total: 0,
-  per_page: 10
+  per_page: 20,
+  total: 0
 })
 
-const confirmSuspendId = ref(null)
-const suspending = ref(false)
+// Modal states for user actions
+const suspendUser = ref(null)
+const activateUser = ref(null)
+const resetPasswordUser = ref(null)
 
-const activatingId = ref(null)
+const actionLoading = ref(false)
 
-const confirmResetPasswordId = ref(null)
-const resettingPassword = ref(false)
+// Debounced fetch of users to prevent unnecessary API queries
+let debounceTimeout = null
 
-async function loadUsers() {
+watch(search, () => {
+  currentPage.value = 1
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  debounceTimeout = setTimeout(() => {
+    fetchUsers()
+  }, 350)
+})
+
+watch(currentPage, () => {
+  fetchUsers()
+})
+
+async function fetchUsers() {
   loading.value = true
   error.value = ''
   try {
-    const response = await UsersAPI.list({
-      search: search.value,
+    const res = await UsersAPI.list({
+      search: search.value.trim(),
       page: currentPage.value,
-      per_page: perPage.value
+      per_page: 20
     })
     
-    users.value = response.data?.data || []
-    meta.value = response.data?.meta || {
+    // Support potential variations of wrapper objects
+    const responseData = res.data ?? res
+    users.value = responseData.data || []
+    
+    pagination.value = responseData.meta || {
       current_page: 1,
       last_page: 1,
-      total: 0,
-      per_page: 10
+      per_page: 20,
+      total: responseData.data?.length || 0
     }
   } catch (e) {
-    error.value = e.response?.data?.message || 'Impossible de charger les utilisateurs.'
+    error.value = e.response?.data?.message || 'Impossible de charger les comptes utilisateurs.'
   } finally {
     loading.value = false
   }
 }
 
-let debounceTimeout = null
-watch(search, () => {
-  if (debounceTimeout) clearTimeout(debounceTimeout)
-  debounceTimeout = setTimeout(() => {
-    if (currentPage.value !== 1) {
-      currentPage.value = 1
-    } else {
-      loadUsers()
-    }
-  }, 350)
-})
-
-watch(currentPage, () => {
-  loadUsers()
-})
-
-async function confirmSuspend(id) {
-  suspending.value = true
-  error.value = ''
-  successMessage.value = ''
-  try {
-    const { data } = await UsersAPI.suspend(id)
-    successMessage.value = data?.message || "L'utilisateur a été suspendu avec succès."
-    const user = users.value.find((u) => u.id === id)
-    if (user) {
-      user.is_active = false
-    }
-  } catch (e) {
-    error.value = e.response?.data?.message || "Impossible de suspendre l'utilisateur."
-  } finally {
-    suspending.value = false
-    confirmSuspendId.value = null
-  }
+// Helpers for user information
+function getAvatarUrl(user) {
+  return user?.member?.profile_picture || null
 }
 
-async function activateUser(id) {
-  activatingId.value = id
-  error.value = ''
-  successMessage.value = ''
-  try {
-    const { data } = await UsersAPI.activate(id)
-    successMessage.value = data?.message || "L'utilisateur a été activé avec succès."
-    const user = users.value.find((u) => u.id === id)
-    if (user) {
-      user.is_active = true
-    }
-  } catch (e) {
-    error.value = e.response?.data?.message || "Impossible d'activer l'utilisateur."
-  } finally {
-    activatingId.value = null
-  }
+function getInitials(user) {
+  const fn = user?.member?.first_name?.[0] || ''
+  const ln = user?.member?.last_name?.[0] || ''
+  return (fn + ln || 'U').toUpperCase()
 }
 
-async function confirmResetPassword(id) {
-  resettingPassword.value = true
-  error.value = ''
-  successMessage.value = ''
-  try {
-    const { data } = await UsersAPI.resetPassword(id)
-    successMessage.value = data?.message || "Le mot de passe de l'utilisateur a été réinitialisé avec succès."
-  } catch (e) {
-    error.value = e.response?.data?.message || "Impossible de réinitialiser le mot de passe."
-  } finally {
-    resettingPassword.value = false
-    confirmResetPasswordId.value = null
+function getUserName(user) {
+  if (user?.member) {
+    return `${user.member.first_name ?? ''} ${user.member.last_name ?? ''}`.trim() || 'Sans nom'
   }
+  return `Utilisateur #${user?.id || ''}`
 }
 
 function formatRole(role) {
   if (role === 'mission_admin') return 'Admin Mission'
   if (role === 'church_admin') return 'Admin Église'
+  if (role === 'user') return 'Utilisateur'
   return role || '—'
 }
 
-onMounted(loadUsers)
+// Action Handlers
+async function handleSuspend() {
+  if (!suspendUser.value) return
+  actionLoading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await UsersAPI.suspend(suspendUser.value.id)
+    successMessage.value = `L'utilisateur "${getUserName(suspendUser.value)}" a été suspendu avec succès.`
+    suspendUser.value = null
+    await fetchUsers()
+  } catch (e) {
+    error.value = e.response?.data?.message || "Une erreur est survenue lors de la suspension de l'utilisateur."
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleActivate() {
+  if (!activateUser.value) return
+  actionLoading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await UsersAPI.activate(activateUser.value.id)
+    successMessage.value = `L'utilisateur "${getUserName(activateUser.value)}" a été activé avec succès.`
+    activateUser.value = null
+    await fetchUsers()
+  } catch (e) {
+    error.value = e.response?.data?.message || "Une erreur est survenue lors de l'activation de l'utilisateur."
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleResetPassword() {
+  if (!resetPasswordUser.value) return
+  actionLoading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    const res = await UsersAPI.resetPassword(resetPasswordUser.value.id)
+    successMessage.value = res.data?.message || `Le mot de passe de "${getUserName(resetPasswordUser.value)}" a été réinitialisé avec succès.`
+    resetPasswordUser.value = null
+    await fetchUsers()
+  } catch (e) {
+    error.value = e.response?.data?.message || "Une erreur est survenue lors de la réinitialisation du mot de passe."
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchUsers()
+})
 </script>
 
 <template>
-  <div>
-    <!-- Page Header -->
-    <div class="mb-8 border-b border-rule pb-6">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-rule pb-6">
       <div>
-        <p class="text-xs uppercase tracking-[0.16em] text-gold">Administration</p>
+        <p class="text-xs uppercase tracking-[0.16em] text-gold font-semibold">Administration</p>
         <h1 class="mt-1 font-display text-3xl text-ink-dark">Utilisateurs</h1>
-        <p class="mt-1 text-sm text-ink-dark/55">Gestion des comptes utilisateurs.</p>
+        <p class="mt-1 text-sm text-ink-dark/55">
+          Gestion des comptes utilisateurs
+          <span v-if="!auth.isMissionAdmin && auth.userChurchId" class="text-gold font-medium">
+            de votre paroisse.
+          </span>
+          <span v-else-if="auth.isMissionAdmin" class="text-gold font-medium">
+            de l'ensemble de la mission.
+          </span>
+        </p>
       </div>
     </div>
 
-    <!-- Search Input -->
-    <div class="mb-4">
-      <input
-        v-model="search"
-        type="text"
-        placeholder="Rechercher par nom, code membre…"
-        class="w-full max-w-sm rounded-md border border-rule bg-white px-3.5 py-2 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold sm:w-72"
-      />
+    <!-- Toolbar: Search Input -->
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div class="relative w-full max-w-sm sm:w-72">
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Rechercher par nom, code membre…"
+          class="w-full rounded-md border border-rule bg-white px-3.5 py-2 text-sm text-ink-dark placeholder-ink-dark/40 outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+        />
+        <span
+          v-if="search"
+          @click="search = ''"
+          class="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-ink-dark/40 hover:text-ink-dark text-xs font-bold"
+          title="Effacer la recherche"
+        >
+          ✕
+        </span>
+      </div>
     </div>
 
-    <!-- Alerts -->
-    <p v-if="error" class="mb-4 rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
-      {{ error }}
-    </p>
+    <!-- Alert Banners -->
+    <div
+      v-if="error"
+      class="rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust flex justify-between items-center"
+    >
+      <span class="font-medium">{{ error }}</span>
+      <button @click="error = ''" class="text-rust/70 hover:text-rust text-xs font-bold ml-2">✕</button>
+    </div>
 
     <div
       v-if="successMessage"
-      class="mb-4 flex items-center justify-between rounded-md border border-sage/30 bg-sage/5 px-4 py-3 text-sm text-sage"
+      class="rounded-md border border-sage/30 bg-sage/5 px-4 py-3 text-sm text-sage flex justify-between items-center"
     >
-      <span>{{ successMessage }}</span>
-      <button @click="successMessage = ''" class="text-xs font-semibold hover:underline">
-        Fermer
-      </button>
+      <span class="font-medium">{{ successMessage }}</span>
+      <button @click="successMessage = ''" class="text-sage/70 hover:text-sage text-xs font-bold ml-2">✕</button>
     </div>
 
-    <!-- Users Table -->
-    <div class="overflow-hidden rounded-lg border border-rule bg-white">
+    <!-- Table Container -->
+    <div class="overflow-hidden rounded-lg border border-rule bg-white shadow-sm">
       <table class="w-full text-left text-sm">
         <thead>
-          <tr class="border-b border-rule bg-parchment-dark/40 text-[11px] uppercase tracking-wide text-ink-dark/45">
-            <th class="px-5 py-3 font-semibold">Nom</th>
+          <tr class="bg-parchment-dark/40 text-[11px] uppercase tracking-wide text-ink-dark/45 border-b border-rule">
             <th class="px-5 py-3 font-semibold">Code membre</th>
+            <th class="px-5 py-3 font-semibold">Nom</th>
             <th class="px-5 py-3 font-semibold">Rôle</th>
             <th class="px-5 py-3 font-semibold">Église</th>
             <th class="px-5 py-3 font-semibold">Statut</th>
@@ -175,87 +222,131 @@ onMounted(loadUsers)
           </tr>
         </thead>
         <tbody>
+          <!-- Loading State -->
           <tr v-if="loading">
-            <td colspan="6" class="px-5 py-10 text-center text-ink-dark/40">Chargement…</td>
+            <td colspan="6" class="px-5 py-10 text-center text-ink-dark/40">Chargement des utilisateurs…</td>
           </tr>
+          
+          <!-- Empty State -->
           <tr v-else-if="!users.length">
             <td colspan="6" class="px-5 py-10 text-center text-ink-dark/40">Aucun utilisateur trouvé.</td>
           </tr>
+          
+          <!-- Data Rows -->
           <tr
+            v-else
             v-for="user in users"
             :key="user.id"
-            class="border-b border-rule last:border-0 hover:bg-parchment/60"
+            class="border-b border-rule last:border-0 hover:bg-parchment/60 transition-colors duration-150"
           >
-            <!-- Nom -->
-            <td class="px-5 py-3.5 font-medium text-ink-dark">
-              {{ user.member ? `${user.member.first_name} ${user.member.last_name}` : '—' }}
-            </td>
-            <!-- Code Membre -->
-            <td class="px-5 py-3.5 text-ink-dark/60">
+            <!-- Member Code -->
+            <td class="px-5 py-3.5 font-mono text-xs text-ink-dark/60">
               {{ user.member?.member_code || '—' }}
             </td>
+            
+            <!-- Member Name with Avatar + RouterLink -->
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <!-- Profile picture or initials avatar -->
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/15 border border-rule overflow-hidden">
+                  <img
+                    v-if="getAvatarUrl(user)"
+                    :src="getAvatarUrl(user)"
+                    :alt="getUserName(user)"
+                    class="h-full w-full object-cover"
+                  />
+                  <span v-else class="text-sm font-semibold text-gold">
+                    {{ getInitials(user) }}
+                  </span>
+                </div>
+                <!-- Name link -->
+                <RouterLink
+                  v-if="user.member?.id"
+                  :to="`/members/${user.member.id}`"
+                  class="font-medium text-ink hover:text-gold hover:underline transition-colors"
+                >
+                  {{ getUserName(user) }}
+                </RouterLink>
+                <span v-else class="font-medium text-ink-dark/45 italic">
+                  {{ getUserName(user) }}
+                </span>
+              </div>
+            </td>
+            
             <!-- Role -->
-            <td class="px-5 py-3.5 text-ink-dark/60 font-medium">
+            <td class="px-5 py-3.5 text-ink-dark/75">
               {{ formatRole(user.role) }}
             </td>
-            <!-- Eglise -->
+            
+            <!-- Church Name -->
             <td class="px-5 py-3.5 text-ink-dark/60">
               {{ user.member?.church?.name || '—' }}
             </td>
-            <!-- Statut badge -->
+            
+            <!-- Status Badge -->
             <td class="px-5 py-3.5">
               <span
                 v-if="user.is_active"
-                class="inline-flex items-center gap-1.5 rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage"
+                class="inline-flex items-center gap-1.5 rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage border border-sage/20"
               >
                 <span class="h-1.5 w-1.5 rounded-full bg-sage"></span>
                 Actif
               </span>
               <span
                 v-else
-                class="inline-flex items-center gap-1.5 rounded-full bg-rust/10 px-2.5 py-1 text-xs font-medium text-rust"
+                class="inline-flex items-center gap-1.5 rounded-full bg-rust/10 px-2.5 py-1 text-xs font-medium text-rust border border-rust/20"
               >
                 <span class="h-1.5 w-1.5 rounded-full bg-rust"></span>
                 Suspendu
               </span>
             </td>
+            
             <!-- Actions -->
             <td class="px-5 py-3.5 text-right">
-              <div class="flex justify-end gap-2">
+              <div class="flex justify-end gap-1.5" v-if="auth.canManageUsers">
+                <!-- Suspend/Activate buttons -->
                 <button
                   v-if="user.is_active"
-                  @click="confirmSuspendId = user.id"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust transition hover:bg-rust/10"
+                  @click="suspendUser = user"
+                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/80 hover:bg-rust/10 hover:text-rust transition duration-150"
+                  title="Suspendre cet utilisateur"
                 >
                   Suspendre
                 </button>
                 <button
                   v-else
-                  @click="activateUser(user.id)"
-                  :disabled="activatingId === user.id"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-sage transition hover:bg-sage/10 disabled:opacity-50"
+                  @click="activateUser = user"
+                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-sage/80 hover:bg-sage/10 hover:text-sage transition duration-150"
+                  title="Activer cet utilisateur"
                 >
-                  {{ activatingId === user.id ? 'Activation…' : 'Activer' }}
+                  Activer
                 </button>
+                
+                <!-- Reset Password -->
                 <button
-                  @click="confirmResetPasswordId = user.id"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
+                  @click="resetPasswordUser = user"
+                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 hover:bg-parchment-dark hover:text-ink-dark transition duration-150"
+                  title="Réinitialiser le mot de passe"
                 >
                   Réinitialiser
                 </button>
               </div>
+              <span v-else class="text-xs text-ink-dark/40 italic">
+                Lecture seule
+              </span>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div v-if="!loading && meta.total > meta.per_page" class="mt-4 flex items-center justify-between">
+    <!-- Server-Side Pagination -->
+    <div v-if="!loading && pagination.last_page > 1" class="mt-4 flex items-center justify-between">
       <p class="text-xs text-ink-dark/45">
-        {{ (meta.current_page - 1) * meta.per_page + 1 }}–{{ Math.min(meta.current_page * meta.per_page, meta.total) }} sur {{ meta.total }}
+        Page {{ pagination.current_page }} sur {{ pagination.last_page }} ({{ pagination.total }} utilisateurs au total)
       </p>
       <div class="flex gap-1">
+        <!-- Previous Page -->
         <button
           @click="currentPage--"
           :disabled="currentPage === 1"
@@ -263,22 +354,26 @@ onMounted(loadUsers)
         >
           ← Précédent
         </button>
+        
+        <!-- Page Numbers -->
         <div class="flex gap-1">
           <button
-            v-for="p in meta.last_page"
+            v-for="p in pagination.last_page"
             :key="p"
             @click="currentPage = p"
             class="h-[30px] w-[30px] rounded-md border px-2 py-1.5 text-xs font-medium transition"
             :class="p === currentPage
-              ? 'border-gold bg-gold/10 text-ink-dark'
+              ? 'border-gold bg-gold/10 text-ink-dark font-semibold'
               : 'border-rule bg-white text-ink-dark/60 hover:border-gold hover:text-ink-dark'"
           >
             {{ p }}
           </button>
         </div>
+        
+        <!-- Next Page -->
         <button
           @click="currentPage++"
-          :disabled="currentPage === meta.last_page"
+          :disabled="currentPage === pagination.last_page"
           class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40 disabled:hover:border-rule disabled:hover:text-ink-dark/60"
         >
           Suivant →
@@ -286,59 +381,105 @@ onMounted(loadUsers)
       </div>
     </div>
 
-    <!-- Confirm suspend modal -->
+    <!-- Modals -->
+
+    <!-- Suspend User Confirmation Modal -->
     <div
-      v-if="confirmSuspendId"
+      v-if="suspendUser"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
-      @click.self="confirmSuspendId = null"
+      @click.self="suspendUser = null"
     >
-      <div class="w-full max-w-sm rounded-lg bg-white p-6">
-        <h3 class="font-display text-lg text-ink-dark">Suspendre cet utilisateur ?</h3>
-        <p class="mt-2 text-sm text-ink-dark/60">
-          L'utilisateur ne pourra plus se connecter à l'application. Ses données resteront conservées dans le système.
+      <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl border border-rule">
+        <h3 class="font-display text-lg text-ink-dark flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rust/10 text-rust">⚠️</span>
+          Suspendre l'utilisateur ?
+        </h3>
+        <p class="mt-3 text-sm text-ink-dark/60">
+          Êtes-vous sûr de vouloir suspendre le compte de <strong>{{ getUserName(suspendUser) }}</strong> ? 
+          Cet utilisateur perdra l'accès à la plateforme immédiatement.
         </p>
         <div class="mt-6 flex justify-end gap-3">
           <button
-            @click="confirmSuspendId = null"
-            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
+            @click="suspendUser = null"
+            :disabled="actionLoading"
+            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark hover:bg-parchment transition"
           >
             Annuler
           </button>
           <button
-            :disabled="suspending"
-            @click="confirmSuspend(confirmSuspendId)"
+            :disabled="actionLoading"
+            @click="handleSuspend"
             class="rounded-md bg-rust px-4 py-2 text-sm font-semibold text-white transition hover:bg-rust/90 disabled:opacity-60"
           >
-            {{ suspending ? 'Suspension…' : 'Suspendre' }}
+            {{ actionLoading ? 'Suspension…' : 'Suspendre' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Confirm reset password modal -->
+    <!-- Activate User Confirmation Modal -->
     <div
-      v-if="confirmResetPasswordId"
+      v-if="activateUser"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
-      @click.self="confirmResetPasswordId = null"
+      @click.self="activateUser = null"
     >
-      <div class="w-full max-w-sm rounded-lg bg-white p-6">
-        <h3 class="font-display text-lg text-ink-dark">Réinitialiser le mot de passe ?</h3>
-        <p class="mt-2 text-sm text-ink-dark/60">
-          Un nouveau mot de passe temporaire sera généré et envoyé à l'adresse e-mail de cet utilisateur.
+      <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl border border-rule">
+        <h3 class="font-display text-lg text-ink-dark flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sage/10 text-sage">✔️</span>
+          Activer l'utilisateur ?
+        </h3>
+        <p class="mt-3 text-sm text-ink-dark/60">
+          Êtes-vous sûr de vouloir réactiver le compte de <strong>{{ getUserName(activateUser) }}</strong> ? 
+          L'utilisateur retrouvera l'accès à l'ensemble de ses fonctionnalités autorisées.
         </p>
         <div class="mt-6 flex justify-end gap-3">
           <button
-            @click="confirmResetPasswordId = null"
-            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
+            @click="activateUser = null"
+            :disabled="actionLoading"
+            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark hover:bg-parchment transition"
           >
             Annuler
           </button>
           <button
-            :disabled="resettingPassword"
-            @click="confirmResetPassword(confirmResetPasswordId)"
+            :disabled="actionLoading"
+            @click="handleActivate"
+            class="rounded-md bg-sage px-4 py-2 text-sm font-semibold text-white transition hover:bg-sage/90 disabled:opacity-60"
+          >
+            {{ actionLoading ? 'Activation…' : 'Activer' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset Password Confirmation Modal -->
+    <div
+      v-if="resetPasswordUser"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
+      @click.self="resetPasswordUser = null"
+    >
+      <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl border border-rule">
+        <h3 class="font-display text-lg text-ink-dark flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gold/10 text-gold">🔑</span>
+          Réinitialiser le mot de passe ?
+        </h3>
+        <p class="mt-3 text-sm text-ink-dark/60">
+          Êtes-vous sûr de vouloir réinitialiser le mot de passe de <strong>{{ getUserName(resetPasswordUser) }}</strong> ? 
+          Un nouveau mot de passe temporaire sera généré pour cet utilisateur.
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="resetPasswordUser = null"
+            :disabled="actionLoading"
+            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark hover:bg-parchment transition"
+          >
+            Annuler
+          </button>
+          <button
+            :disabled="actionLoading"
+            @click="handleResetPassword"
             class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-60"
           >
-            {{ resettingPassword ? 'Réinitialisation…' : 'Réinitialiser' }}
+            {{ actionLoading ? 'Réinitialisation…' : 'Réinitialiser' }}
           </button>
         </div>
       </div>
