@@ -2,11 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ChurchesAPI } from '../../services/api'
-import StatusBadge from '../../components/StatusBadge.vue'
 import { useAuthStore } from '../../stores/auth'
+import StatusBadge from '../../components/StatusBadge.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+
 const churches = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -33,7 +34,6 @@ const paginated = computed(() => {
   return filtered.value.slice(start, start + perPage)
 })
 
-// Reset to page 1 when search changes
 function onSearchInput() {
   currentPage.value = 1
 }
@@ -67,8 +67,8 @@ function churchStatus(c) {
   return c.structure?.status || c.status || 'active'
 }
 
-// Binary status toggle via dedicated endpoint (backend requires status in body)
 async function toggleStatus(church) {
+  if (!auth.canToggleChurchStatus) return
   const current = churchStatus(church)
   const newStatus = current === 'active' ? 'inactive' : 'active'
   togglingId.value = church.id
@@ -91,15 +91,11 @@ function goShow(id) {
   router.push({ name: 'church-show', params: { id } })
 }
 
-// Archive = soft delete on the backend (deleted_at). The record stays
-// in the database for historical/audit purposes but disappears from
-// this list once Eloquent's default scope excludes soft-deleted rows.
 async function confirmArchive(id) {
   archiving.value = true
   try {
     await ChurchesAPI.remove(id)
     churches.value = churches.value.filter((c) => c.id !== id)
-    // Adjust page if we deleted the last item on a page
     if (paginated.value.length === 0 && currentPage.value > 1) {
       currentPage.value--
     }
@@ -122,6 +118,7 @@ onMounted(loadChurches)
         <h1 class="mt-1 font-display text-3xl text-ink-dark">Églises</h1>
         <p class="mt-1 text-sm text-ink-dark/55">Toutes les congrégations enregistrées.</p>
       </div>
+      <!-- Only mission_admin can create a church -->
       <RouterLink
         v-if="auth.canManageChurches"
         to="/churches/new"
@@ -172,9 +169,9 @@ onMounted(loadChurches)
             </td>
             <td class="px-5 py-3.5 text-ink-dark/60">{{ churchAddress(church) }}</td>
             <td class="px-5 py-3.5">
-              <StatusBadge v-if="!auth.canManageChurches" :status="churchStatus(church)" />
+              <!-- Status is clickable only for mission_admin -->
               <button
-                v-else
+                v-if="auth.canToggleChurchStatus"
                 @click="toggleStatus(church)"
                 :disabled="togglingId === church.id"
                 title="Cliquer pour changer le statut"
@@ -182,29 +179,32 @@ onMounted(loadChurches)
               >
                 <StatusBadge :status="churchStatus(church)" />
               </button>
+              <StatusBadge v-else :status="churchStatus(church)" />
             </td>
             <td class="px-5 py-3.5 text-right">
               <div class="flex justify-end gap-2">
+                <!-- Voir — visible to everyone -->
                 <button
                   @click="goShow(church.id)"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
                 >
                   Voir
                 </button>
-                <button
-                  v-if="auth.canManageChurches"
-                  @click="goEdit(church.id)"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
-                >
-                  Modifier
-                </button>
-                <button
-                  v-if="auth.canManageChurches"
-                  @click="confirmArchiveId = church.id"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
-                >
-                  Archiver
-                </button>
+                <!-- Modifier + Archiver — mission_admin only -->
+                <template v-if="auth.canManageChurches">
+                  <button
+                    @click="goEdit(church.id)"
+                    class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    @click="confirmArchiveId = church.id"
+                    class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
+                  >
+                    Archiver
+                  </button>
+                </template>
               </div>
             </td>
           </tr>

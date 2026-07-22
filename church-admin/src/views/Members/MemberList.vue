@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { MembersAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
@@ -22,28 +22,40 @@ const total = ref(0)
 const lastPage = ref(1)
 let searchTimer = null
 
+function unwrapList(data) {
+  // Handles: paginated { data: [...], meta: {...} }, plain array, or { data: [...] }
+  if (Array.isArray(data)) return { list: data, meta: null }
+  if (Array.isArray(data?.data)) return { list: data.data, meta: data.meta ?? null }
+  return { list: [], meta: null }
+}
+
 async function loadMembers() {
   loading.value = true
   error.value = ''
   try {
-    const params = {
-      page: currentPage.value,
-      per_page: perPage,
-    }
-    if (search.value.trim()) {
-      params.search = search.value.trim()
-    }
+    const params = { page: currentPage.value, per_page: perPage }
+    if (search.value.trim()) params.search = search.value.trim()
+
     const { data } = await MembersAPI.list(params)
-    // Paginated response: data.data = array, data.meta = { current_page, last_page, total, per_page }
-    members.value = data.data ?? data
-    const meta = data.meta
+    const { list, meta } = unwrapList(data)
+    members.value = list
+
     if (meta) {
-      currentPage.value = meta.current_page
-      lastPage.value = meta.last_page
-      total.value = meta.total
+      currentPage.value = meta.current_page ?? currentPage.value
+      lastPage.value    = meta.last_page   ?? 1
+      total.value       = meta.total       ?? list.length
+    } else {
+      lastPage.value = 1
+      total.value    = list.length
     }
   } catch (e) {
-    error.value = e.response?.data?.message || 'Impossible de charger les membres.'
+    const msg = e.response?.data?.message || ''
+    // Backend pivot() error — show a friendly message instead of the raw PHP exception
+    if (msg.toLowerCase().includes('pivot') || e.response?.status === 500) {
+      error.value = 'Une erreur serveur est survenue lors du chargement des membres. Veuillez contacter l\'administrateur.'
+    } else {
+      error.value = msg || 'Impossible de charger les membres.'
+    }
   } finally {
     loading.value = false
   }
@@ -55,7 +67,7 @@ function onSearchInput() {
   searchTimer = setTimeout(() => {
     currentPage.value = 1
     loadMembers()
-  }, 350)
+  }, 400)
 }
 
 function goToPage(p) {
@@ -64,41 +76,28 @@ function goToPage(p) {
   loadMembers()
 }
 
-// Page numbers for pagination buttons (show up to 5 around current page)
 function pageNumbers() {
   const pages = []
   const start = Math.max(1, currentPage.value - 2)
-  const end = Math.min(lastPage.value, currentPage.value + 2)
+  const end   = Math.min(lastPage.value, currentPage.value + 2)
   for (let i = start; i <= end; i++) pages.push(i)
   return pages
 }
 
-function goShow(id) {
-  router.push({ name: 'member-show', params: { id } })
-}
+function goShow(id)     { router.push({ name: 'member-show', params: { id } }) }
+function goEdit(id)     { router.push({ name: 'member-edit', params: { id } }) }
+function goSanction(id) { router.push({ name: 'member-show', params: { id }, query: { action: 'sanction' } }) }
+function goTransfer(id) { router.push({ name: 'member-show', params: { id }, query: { action: 'transfer' } }) }
 
-function goEdit(id) {
-  router.push({ name: 'member-edit', params: { id } })
-}
-
-function goSanction(id) {
-  router.push({ name: 'member-show', params: { id }, query: { action: 'sanction' } })
-}
-
-function goTransfer(id) {
-  router.push({ name: 'member-show', params: { id }, query: { action: 'transfer' } })
-}
-
-async function confirmArchive(id) {
+async function doArchive(id) {
   archiving.value = true
   try {
     await MembersAPI.remove(id)
-    // Reload the current page to get updated list
     await loadMembers()
   } catch (e) {
     error.value = e.response?.data?.message || "Impossible d'archiver ce membre."
   } finally {
-    archiving.value = false
+    archiving.value    = false
     confirmArchiveId.value = null
   }
 }
@@ -115,6 +114,7 @@ onMounted(loadMembers)
         <h1 class="mt-1 font-display text-3xl text-ink-dark">Membres</h1>
         <p class="mt-1 text-sm text-ink-dark/55">Tous les membres enregistrés.</p>
       </div>
+      <!-- Add button: church_admin + secretaire + mission_admin only -->
       <RouterLink
         v-if="auth.canManageMembers"
         to="/members/new"
@@ -124,7 +124,7 @@ onMounted(loadMembers)
       </RouterLink>
     </div>
 
-    <!-- Search Input -->
+    <!-- Search -->
     <div class="mb-4">
       <input
         v-model="search"
@@ -135,7 +135,7 @@ onMounted(loadMembers)
       />
     </div>
 
-    <!-- Error Display -->
+    <!-- Error -->
     <p v-if="error" class="mb-4 rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
       {{ error }}
     </p>
@@ -157,7 +157,7 @@ onMounted(loadMembers)
           <tr v-if="loading">
             <td colspan="6" class="px-5 py-10 text-center text-ink-dark/40">Chargement…</td>
           </tr>
-          <tr v-else-if="!members.length">
+          <tr v-else-if="!members.length && !error">
             <td colspan="6" class="px-5 py-10 text-center text-ink-dark/40">Aucun membre trouvé.</td>
           </tr>
           <tr
@@ -169,8 +169,8 @@ onMounted(loadMembers)
             <td class="px-5 py-3.5 font-medium text-ink-dark">
               {{ member.first_name }} {{ member.last_name }}
             </td>
-            <td class="px-5 py-3.5 text-ink-dark/60">
-              {{ member.member_code }}
+            <td class="px-5 py-3.5 font-mono text-sm text-ink-dark/60">
+              {{ member.member_code || '—' }}
             </td>
             <td class="px-5 py-3.5 text-ink-dark/60">
               {{ member.ecclesiastical_title || '—' }}
@@ -183,40 +183,42 @@ onMounted(loadMembers)
             </td>
             <td class="px-5 py-3.5 text-right" @click.stop>
               <div class="flex justify-end gap-2">
+                <!-- Voir — everyone -->
                 <button
                   @click="goShow(member.id)"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
                 >
                   Voir
                 </button>
-                <button
-                  v-if="auth.canManageMembers"
-                  @click="goEdit(member.id)"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
-                >
-                  Modifier
-                </button>
-                <button
-                  v-if="auth.canSanctionMembers && member.status === 'active'"
-                  @click="goSanction(member.id)"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 hover:text-amber-800"
-                >
-                  Sanctionner
-                </button>
-                <button
-                  v-if="auth.canManageMembers"
-                  @click="goTransfer(member.id)"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
-                >
-                  Transférer
-                </button>
-                <button
-                  v-if="auth.canManageMembers"
-                  @click="confirmArchiveId = member.id"
-                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
-                >
-                  Archiver
-                </button>
+
+                <!-- Modifier, Sanctionner, Transférer, Archiver — elevated roles only -->
+                <template v-if="auth.canManageMembers">
+                  <button
+                    @click="goEdit(member.id)"
+                    class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    v-if="auth.canSanctionMembers && member.status === 'active'"
+                    @click="goSanction(member.id)"
+                    class="rounded-md px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 hover:text-amber-800"
+                  >
+                    Sanctionner
+                  </button>
+                  <button
+                    @click="goTransfer(member.id)"
+                    class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
+                  >
+                    Transférer
+                  </button>
+                  <button
+                    @click="confirmArchiveId = member.id"
+                    class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
+                  >
+                    Archiver
+                  </button>
+                </template>
               </div>
             </td>
           </tr>
@@ -233,7 +235,7 @@ onMounted(loadMembers)
         <button
           @click="goToPage(currentPage - 1)"
           :disabled="currentPage === 1"
-          class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40 disabled:hover:border-rule disabled:hover:text-ink-dark/60"
+          class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40"
         >
           ← Précédent
         </button>
@@ -253,7 +255,7 @@ onMounted(loadMembers)
         <button
           @click="goToPage(currentPage + 1)"
           :disabled="currentPage === lastPage"
-          class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40 disabled:hover:border-rule disabled:hover:text-ink-dark/60"
+          class="rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:border-gold hover:text-ink-dark disabled:opacity-40"
         >
           Suivant →
         </button>
@@ -280,7 +282,7 @@ onMounted(loadMembers)
           </button>
           <button
             :disabled="archiving"
-            @click="confirmArchive(confirmArchiveId)"
+            @click="doArchive(confirmArchiveId)"
             class="rounded-md bg-rust px-4 py-2 text-sm font-medium text-white transition hover:bg-rust/90 disabled:opacity-60"
           >
             {{ archiving ? 'Archivage…' : 'Archiver' }}
