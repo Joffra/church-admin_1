@@ -121,6 +121,7 @@ onMounted(loadChurches)
         <p class="mt-1 text-sm text-ink-dark/55">Toutes les congrégations enregistrées.</p>
       </div>
       <RouterLink
+        v-if="auth.canManageChurches"
         to="/churches/new"
         class="rounded-md bg-gold px-4 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light"
       >
@@ -170,6 +171,7 @@ onMounted(loadChurches)
             <td class="px-5 py-3.5 text-ink-dark/60">{{ churchAddress(church) }}</td>
             <td class="px-5 py-3.5">
               <button
+                v-if="auth.canManageChurches"
                 @click="toggleStatus(church)"
                 :disabled="togglingId === church.id"
                 title="Cliquer pour changer le statut"
@@ -177,6 +179,7 @@ onMounted(loadChurches)
               >
                 <StatusBadge :status="churchStatus(church)" />
               </button>
+              <StatusBadge v-else :status="churchStatus(church)" />
             </td>
             <td class="px-5 py-3.5 text-right">
               <div class="flex justify-end gap-2">
@@ -187,12 +190,14 @@ onMounted(loadChurches)
                   Voir
                 </button>
                 <button
+                  v-if="auth.canManageChurches"
                   @click="goEdit(church.id)"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
                 >
                   Modifier
                 </button>
                 <button
+                  v-if="auth.canManageChurches"
                   @click="confirmArchiveId = church.id"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
                 >
