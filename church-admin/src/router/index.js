@@ -8,14 +8,8 @@ const routes = [
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
   { path: '/', name: 'dashboard', component: Dashboard },
 
-  // ---- Profile shortcut → redirect to logged-in user's member page ----
-  { path: '/profile', name: 'profile', redirect: () => {
-      const auth = useAuthStore()
-      const memberId = auth.user?.member_id
-      if (memberId) return { name: 'member-show', params: { id: memberId } }
-      return { name: 'dashboard' }
-    }
-  },
+  // /profile → always redirect to dashboard (no member page needed)
+  { path: '/profile', redirect: '/' },
 
   // ---- Churches ----
   { path: '/churches', name: 'churches', component: () => import('../views/Churches/ChurchList.vue') },
@@ -23,20 +17,19 @@ const routes = [
   { path: '/churches/:id', name: 'church-show', component: () => import('../views/Churches/ChurchShow.vue'), props: true },
   { path: '/churches/:id/edit', name: 'church-edit', component: () => import('../views/Churches/ChurchForm.vue'), props: true, meta: { roles: ['mission_admin'] } },
 
-  // ---- Members (Iteration 1) ----
-  // Both mission_admin and church_admin can create/edit members
+  // ---- Members ----
   { path: '/members', name: 'members', component: () => import('../views/Members/MemberList.vue') },
   { path: '/members/new', name: 'member-create', component: () => import('../views/Members/MemberForm.vue'), meta: { roles: ['mission_admin', 'church_admin'] } },
   { path: '/members/:id', name: 'member-show', component: () => import('../views/Members/MemberShow.vue'), props: true },
   { path: '/members/:id/edit', name: 'member-edit', component: () => import('../views/Members/MemberForm.vue'), props: true, meta: { roles: ['mission_admin', 'church_admin'] } },
 
-  // ---- Users (Iteration 1) — Admin only ----
+  // ---- Users — Admin only ----
   { path: '/users', name: 'users', component: () => import('../views/Users/UserList.vue'), meta: { roles: ['mission_admin', 'church_admin'] } },
 
-  // ---- Sanctions (Iteration 1) — Admin only ----
+  // ---- Sanctions — Admin only ----
   { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { roles: ['mission_admin', 'church_admin'] } },
 
-  // ---- Password management (Itération 0) ----
+  // ---- Password management ----
   { path: '/password/change', name: 'password-change', component: () => import('../views/ChangePassword.vue') },
   { path: '/password/reset', name: 'password-reset', component: () => import('../views/ResetPassword.vue'), meta: { public: true } },
 
@@ -57,7 +50,6 @@ router.beforeEach((to) => {
   if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'dashboard' }
   }
-  // Role-based route guard
   if (to.meta.roles && !to.meta.roles.includes(auth.role)) {
     return { name: 'dashboard' }
   }
