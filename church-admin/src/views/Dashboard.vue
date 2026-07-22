@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ChurchesAPI, EcclesiasticalTitlesAPI, MembersAPI, SanctionsAPI } from '../services/api'
-import { useAuthStore } from '../stores/auth'
 import StatCard from '../components/StatCard.vue'
+import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -13,7 +13,6 @@ const stats = ref({
   churchesActive: null,
   ecclesiasticalTitles: null,
   members: null,
-  membersSanctioned: null,
   activeSanctions: null,
 })
 
@@ -27,59 +26,32 @@ function unwrap(payload) {
   return []
 }
 
-function paginatedTotal(payload) {
-  const meta = payload?.meta
-  if (meta && typeof meta.total === 'number') return meta.total
-  const data = payload?.data
-  if (Array.isArray(data)) return data.length
-  if (Array.isArray(payload)) return payload.length
-  return 0
-}
-
 async function loadStats() {
   loading.value = true
   error.value = ''
   try {
-    const requests = [
-      { key: 'churches', fn: () => ChurchesAPI.list() },
-      { key: 'ecclesiasticalTitles', fn: () => EcclesiasticalTitlesAPI.list() },
-    ]
+    const results = await Promise.allSettled([
+      ChurchesAPI.list(),
+      EcclesiasticalTitlesAPI.list(),
+      MembersAPI.list(),
+      SanctionsAPI.list({ status: 'active', per_page: 1 }),
+    ])
 
-    if (auth.isAuthenticated) {
-      requests.push({ key: 'members', fn: () => MembersAPI.list({ per_page: 1, page: 1 }) })
-      requests.push({ key: 'membersSanctioned', fn: () => MembersAPI.list({ per_page: 1, page: 1, search: 'sanctioned' }) })
+    const [churches, eccTitles, members, sanctions] = results
+
+    if (churches.status === 'fulfilled') {
+      const list = unwrap(churches.value.data)
+      stats.value.churches = list.length
+      stats.value.churchesActive = list.filter(
+        (c) => (c.status || '').toLowerCase() === 'active' || (c.status || '').toLowerCase() === 'actif'
+      ).length
     }
 
-    if (auth.isAdmin) {
-      requests.push({ key: 'activeSanctions', fn: () => SanctionsAPI.list({ status: 'active', per_page: 1 }) })
-    }
+    stats.value.ecclesiasticalTitles = eccTitles.status === 'fulfilled' ? unwrap(eccTitles.value.data).length : null
+    stats.value.members = members.status === 'fulfilled' ? unwrap(members.value.data).length : null
+    stats.value.activeSanctions = sanctions.status === 'fulfilled' ? (sanctions.value.data?.meta?.total ?? unwrap(sanctions.value.data).length) : null
 
-    const results = await Promise.allSettled(requests.map((r) => r.fn()))
-
-    results.forEach((result, i) => {
-      const key = requests[i].key
-      if (result.status !== 'fulfilled') return
-
-      if (key === 'churches') {
-        const list = unwrap(result.value.data)
-        stats.value.churches = list.length
-        stats.value.churchesActive = list.filter(
-          (c) => (c.status || '').toLowerCase() === 'active' || (c.status || '').toLowerCase() === 'actif'
-        ).length
-      } else if (key === 'ecclesiasticalTitles') {
-        stats.value.ecclesiasticalTitles = unwrap(result.value.data).length
-      } else if (key === 'members') {
-        stats.value.members = paginatedTotal(result.value.data)
-      } else if (key === 'membersSanctioned') {
-        stats.value.membersSanctioned = null
-      } else if (key === 'activeSanctions') {
-        stats.value.activeSanctions = paginatedTotal(result.value.data)
-        stats.value.membersSanctioned = paginatedTotal(result.value.data)
-      }
-    })
-
-    const allFailed = results.every((r) => r.status === 'rejected')
-    if (allFailed) {
+    if (results.every((r) => r.status === 'rejected')) {
       error.value = "Impossible de joindre l'API. Vérifiez que le serveur Laravel est lancé."
     }
   } catch (e) {
@@ -98,7 +70,7 @@ onMounted(loadStats)
       <div>
         <p class="text-xs uppercase tracking-[0.16em] text-gold capitalize">{{ today }}</p>
         <h1 class="mt-1 font-display text-3xl text-ink">Vue d'ensemble</h1>
-        <p class="mt-1 text-sm text-ink/55">Résumé du registre ecclésiastique.</p>
+        <p class="mt-1 text-sm text-ink/55">Résumé du registre MECEIPH.</p>
       </div>
       <button
         @click="loadStats"
@@ -112,13 +84,11 @@ onMounted(loadStats)
       {{ error }}
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <StatCard label="Églises" :value="stats.churches" :loading="loading" hint="Congrégations enregistrées" accent="gold" />
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard label="Églises" :value="stats.churches" :loading="loading" hint="Congrégations" accent="gold" />
       <StatCard label="Églises actives" :value="stats.churchesActive" :loading="loading" hint="Statut actif" accent="sage" />
-      <StatCard label="Titres ecclésiastiques" :value="stats.ecclesiasticalTitles" :loading="loading" hint="Rangs du clergé enregistrés" accent="rust" />
       <StatCard label="Membres" :value="stats.members" :loading="loading" hint="Membres enregistrés" accent="gold" />
-      <StatCard label="Membres sanctionnés" :value="stats.membersSanctioned" :loading="loading" hint="Sous sanction active" accent="rust" />
-      <StatCard v-if="auth.isAdmin" label="Sanctions actives" :value="stats.activeSanctions" :loading="loading" hint="Sanctions en cours" accent="rust" />
+      <StatCard label="Sanctions actives" :value="stats.activeSanctions" :loading="loading" hint="Sanctions en cours" accent="rust" />
     </div>
 
     <div class="mt-10">
@@ -127,17 +97,14 @@ onMounted(loadStats)
         <RouterLink to="/churches" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           {{ auth.canManageChurches ? 'Gérer les églises' : 'Voir les églises' }} →
         </RouterLink>
-        <RouterLink to="/members" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
-          {{ auth.canManageMembers ? 'Gérer les membres' : 'Voir les membres' }} →
+        <RouterLink v-if="auth.canViewMembers" to="/members" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+          Gérer les membres →
         </RouterLink>
-        <RouterLink v-if="auth.canManageChurches" to="/churches/new" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
-          Ajouter une église →
-        </RouterLink>
-        <RouterLink v-if="auth.canManageMembers" to="/members/new" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
-          Ajouter un membre →
-        </RouterLink>
-        <RouterLink v-if="auth.isAdmin" to="/users" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+        <RouterLink v-if="auth.canManageUsers" to="/users" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Gérer les utilisateurs →
+        </RouterLink>
+        <RouterLink v-if="auth.isAdmin" to="/sanctions" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+          Voir les sanctions →
         </RouterLink>
       </div>
     </div>
