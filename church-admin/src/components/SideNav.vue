@@ -38,6 +38,7 @@ const navGroups = computed(() => {
         ),
         // Only admins can view sanctions
         ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
+        { to: '/committees', label: 'Comités' },
       ],
     },
   ]
@@ -59,6 +60,7 @@ function isActive(path) {
   if (path === '/churches') return route.path.startsWith('/churches')
   if (path === '/members') return route.path.startsWith('/members')
   if (path === '/sanctions') return route.path.startsWith('/sanctions')
+  if (path === '/committees') return route.path.startsWith('/committees')
   if (path === '/users') return route.path.startsWith('/users')
   // /profile: exact match
   if (path === '/profile') return route.path === '/profile'

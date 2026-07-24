@@ -1,0 +1,404 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { CommitteesAPI, MembersAPI, TitlesAPI } from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+const committee = ref(null)
+const loading = ref(true)
+const error = ref('')
+const successMessage = ref('')
+
+// Add member modal
+const showAddModal = ref(false)
+const members = ref([])
+const availableTitles = ref([])
+const loadingMembers = ref(false)
+const loadingTitles = ref(false)
+const addForm = ref({ member_id: '', title_id: '' })
+const addError = ref('')
+const adding = ref(false)
+
+// Remove member
+const removeTarget = ref(null)
+const removing = ref(false)
+
+// Edit committee
+const showEditModal = ref(false)
+const editForm = ref({ name: '', description: '' })
+const editError = ref('')
+const editing = ref(false)
+
+function structureLabel(type) {
+  if (type === 'mission') return 'Mission'
+  if (type === 'church') return 'Église'
+  if (type === 'group') return 'Groupe'
+  return type || '—'
+}
+
+function formatDate(d) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('fr-FR')
+}
+
+const sortedMembers = computed(() => {
+  if (!committee.value?.members) return []
+  return [...committee.value.members].sort((a, b) => {
+    const la = a.assignment?.title?.level ?? 999
+    const lb = b.assignment?.title?.level ?? 999
+    return la - lb
+  })
+})
+
+async function loadCommittee() {
+  loading.value = true
+  error.value = ''
+  try {
+    const { data } = await CommitteesAPI.get(route.params.id)
+    committee.value = data.data ?? data
+  } catch (e) {
+    error.value = e.response?.data?.message || 'Impossible de charger ce comité.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function openAddModal() {
+  showAddModal.value = true
+  addForm.value = { member_id: '', title_id: '' }
+  addError.value = ''
+  loadingMembers.value = true
+  loadingTitles.value = true
+
+  // Load members and available titles in parallel
+  try {
+    const [membersRes, titlesRes] = await Promise.all([
+      MembersAPI.list(),
+      TitlesAPI.availableFor(route.params.id),
+    ])
+    const allMembers = Array.isArray(membersRes.data) ? membersRes.data : (membersRes.data.data ?? [])
+    // Filter out members already in the committee
+    const existingIds = new Set((committee.value?.members || []).map(m => m.id))
+    members.value = allMembers.filter(m => !existingIds.has(m.id))
+
+    availableTitles.value = Array.isArray(titlesRes.data) ? titlesRes.data : (titlesRes.data.data ?? [])
+  } catch (e) {
+    addError.value = 'Impossible de charger les données nécessaires.'
+  } finally {
+    loadingMembers.value = false
+    loadingTitles.value = false
+  }
+}
+
+async function handleAddMember() {
+  if (!addForm.value.member_id || !addForm.value.title_id) {
+    addError.value = 'Veuillez sélectionner un membre et un titre.'
+    return
+  }
+
+  adding.value = true
+  addError.value = ''
+  try {
+    await CommitteesAPI.addMember(route.params.id, {
+      committee_id: route.params.id,
+      member_id: addForm.value.member_id,
+      title_id: addForm.value.title_id,
+    })
+    showAddModal.value = false
+    successMessage.value = 'Membre affecté au comité avec succès.'
+    await loadCommittee()
+  } catch (e) {
+    if (e.response?.status === 422) {
+      addError.value = e.response.data?.message || 'Données invalides.'
+    } else {
+      addError.value = e.response?.data?.message || "Une erreur s'est produite."
+    }
+  } finally {
+    adding.value = false
+  }
+}
+
+async function handleRemoveMember() {
+  if (!removeTarget.value) return
+  removing.value = true
+  try {
+    await CommitteesAPI.removeMember(route.params.id, removeTarget.value.id)
+    removeTarget.value = null
+    successMessage.value = 'Membre retiré du comité.'
+    await loadCommittee()
+  } catch (e) {
+    error.value = e.response?.data?.message || "Une erreur s'est produite lors du retrait."
+  } finally {
+    removing.value = false
+  }
+}
+
+function openEditModal() {
+  editForm.value = {
+    name: committee.value?.name || '',
+    description: committee.value?.description || '',
+  }
+  editError.value = ''
+  showEditModal.value = true
+}
+
+async function handleEdit() {
+  editing.value = true
+  editError.value = ''
+  try {
+    await CommitteesAPI.update(route.params.id, editForm.value)
+    showEditModal.value = false
+    successMessage.value = 'Comité mis à jour avec succès.'
+    await loadCommittee()
+  } catch (e) {
+    if (e.response?.status === 422) {
+      editError.value = e.response.data?.message || 'Veuillez corriger les champs.'
+    } else {
+      editError.value = e.response?.data?.message || "Une erreur s'est produite."
+    }
+  } finally {
+    editing.value = false
+  }
+}
+
+onMounted(loadCommittee)
+</script>
+
+<template>
+  <div>
+    <!-- Back link -->
+    <RouterLink to="/committees" class="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-dark/50 hover:text-ink-dark">
+      ← Retour aux comités
+    </RouterLink>
+
+    <!-- Loading -->
+    <div v-if="loading" class="py-10 text-center text-ink-dark/40">Chargement du comité…</div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
+      {{ error }}
+    </div>
+
+    <!-- Content -->
+    <div v-else-if="committee">
+      <!-- Header -->
+      <div class="mb-6 border-b border-rule pb-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-[0.16em] text-gold">
+              {{ structureLabel(committee.structure?.structurable_type) }}
+            </p>
+            <h1 class="mt-1 font-display text-3xl text-ink-dark">{{ committee.name }}</h1>
+            <p class="mt-1 text-sm text-ink-dark/55">
+              {{ committee.structure?.name || '—' }}
+              <span v-if="committee.description" class="mx-2">·</span>
+              <span v-if="committee.description">{{ committee.description }}</span>
+            </p>
+          </div>
+          <div v-if="auth.canManageCommittees" class="flex gap-2">
+            <button
+              @click="openEditModal"
+              class="rounded-md border border-rule bg-white px-3 py-2 text-xs font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"
+            >
+              Modifier
+            </button>
+            <button
+              @click="openAddModal"
+              class="rounded-md bg-gold px-3 py-2 text-xs font-semibold text-ink-dark transition hover:bg-gold/90"
+            >
+              + Affecter un membre
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success message -->
+      <div v-if="successMessage" class="mb-6 rounded-md border border-sage/30 bg-sage/5 px-4 py-3 text-sm text-sage">
+        {{ successMessage }}
+        <button @click="successMessage = ''" class="text-sage/70 hover:text-sage text-xs font-bold ml-2">✕</button>
+      </div>
+
+      <!-- Members table -->
+      <div class="overflow-hidden rounded-lg border border-rule bg-white">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-rule bg-parchment-dark/40 text-[11px] uppercase tracking-wide text-ink-dark/45">
+              <th class="px-5 py-3 font-semibold">Membre</th>
+              <th class="px-5 py-3 font-semibold">Code</th>
+              <th class="px-5 py-3 font-semibold">Titre ecclésiastique</th>
+              <th class="px-5 py-3 font-semibold">Poste au comité</th>
+              <th class="px-5 py-3 font-semibold">Affecté le</th>
+              <th v-if="auth.canManageCommittees" class="px-5 py-3 font-semibold text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="!sortedMembers.length">
+              <td :colspan="auth.canManageCommittees ? 6 : 5" class="px-5 py-10 text-center text-ink-dark/40">
+                Aucun membre affecté à ce comité.
+              </td>
+            </tr>
+            <tr
+              v-else
+              v-for="m in sortedMembers"
+              :key="m.id"
+              class="border-b border-rule last:border-0 hover:bg-parchment/60"
+            >
+              <td class="px-5 py-3.5 font-medium text-ink-dark">
+                {{ m.first_name }} {{ m.last_name }}
+              </td>
+              <td class="px-5 py-3.5 font-mono text-xs text-ink-dark/60">{{ m.member_code || '—' }}</td>
+              <td class="px-5 py-3.5 text-ink-dark/60">{{ m.ecclesiastical_title || '—' }}</td>
+              <td class="px-5 py-3.5">
+                <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-xs font-medium text-ink-dark/70">
+                  {{ m.assignment?.title?.name || '—' }}
+                </span>
+              </td>
+              <td class="px-5 py-3.5 text-ink-dark/60">{{ formatDate(m.assignment?.assigned_at) }}</td>
+              <td v-if="auth.canManageCommittees" class="px-5 py-3.5 text-right">
+                <button
+                  @click="removeTarget = m"
+                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
+                >
+                  Retirer
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div
+      v-if="showAddModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/40 backdrop-blur-sm"
+      @click.self="showAddModal = false"
+    >
+      <div class="w-full max-w-md rounded-lg border border-rule bg-white p-6 shadow-xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="font-display text-lg font-bold text-ink-dark">Affecter un membre</h3>
+          <button @click="showAddModal = false" class="text-ink-dark/40 hover:text-ink-dark transition-colors">✕</button>
+        </div>
+
+        <p v-if="addError" class="mb-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ addError }}</p>
+
+        <div v-if="loadingMembers || loadingTitles" class="py-6 text-center text-sm text-ink-dark/40">Chargement…</div>
+        <div v-else class="space-y-4">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Membre *</label>
+            <select
+              v-model="addForm.member_id"
+              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+            >
+              <option value="" disabled>Sélectionner un membre…</option>
+              <option v-for="m in members" :key="m.id" :value="m.id">
+                {{ m.first_name }} {{ m.last_name }} — {{ m.member_code }}
+              </option>
+            </select>
+            <p v-if="!members.length" class="mt-1 text-xs text-ink-dark/40">Tous les membres sont déjà affectés à ce comité.</p>
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Poste (titre) *</label>
+            <select
+              v-model="addForm.title_id"
+              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+            >
+              <option value="" disabled>Sélectionner un poste…</option>
+              <option v-for="t in availableTitles" :key="t.id" :value="t.id">
+                {{ t.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3 border-t border-rule pt-4">
+          <button @click="showAddModal = false" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">Annuler</button>
+          <button
+            :disabled="adding || !addForm.member_id || !addForm.title_id"
+            @click="handleAddMember"
+            class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold/90 disabled:opacity-50"
+          >
+            {{ adding ? 'Affectation…' : 'Confirmer' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remove Member Modal -->
+    <div
+      v-if="removeTarget"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/40 backdrop-blur-sm"
+      @click.self="removeTarget = null"
+    >
+      <div class="w-full max-w-sm rounded-lg border border-rule bg-white p-6 shadow-xl">
+        <h3 class="font-display text-lg font-bold text-ink-dark">Retirer ce membre ?</h3>
+        <p class="mt-2 text-sm text-ink-dark/60">
+          Êtes-vous sûr de vouloir retirer
+          <strong>{{ removeTarget.first_name }} {{ removeTarget.last_name }}</strong>
+          du comité « {{ committee?.name }} » ?
+        </p>
+        <div class="mt-6 flex justify-end gap-3 border-t border-rule pt-4">
+          <button @click="removeTarget = null" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">Annuler</button>
+          <button
+            :disabled="removing"
+            @click="handleRemoveMember"
+            class="rounded-md bg-rust px-4 py-2 text-sm font-semibold text-white transition hover:bg-rust/90 disabled:opacity-50"
+          >
+            {{ removing ? 'Retrait…' : 'Retirer' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Committee Modal -->
+    <div
+      v-if="showEditModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/40 backdrop-blur-sm"
+      @click.self="showEditModal = false"
+    >
+      <div class="w-full max-w-md rounded-lg border border-rule bg-white p-6 shadow-xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="font-display text-lg font-bold text-ink-dark">Modifier le comité</h3>
+          <button @click="showEditModal = false" class="text-ink-dark/40 hover:text-ink-dark transition-colors">✕</button>
+        </div>
+
+        <p v-if="editError" class="mb-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ editError }}</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Nom *</label>
+            <input
+              v-model="editForm.name"
+              type="text"
+              required
+              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+            />
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Description</label>
+            <textarea
+              v-model="editForm.description"
+              rows="3"
+              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+            />
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3 border-t border-rule pt-4">
+          <button @click="showEditModal = false" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">Annuler</button>
+          <button
+            :disabled="editing || !editForm.name"
+            @click="handleEdit"
+            class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold/90 disabled:opacity-50"
+          >
+            {{ editing ? 'Modification…' : 'Enregistrer' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

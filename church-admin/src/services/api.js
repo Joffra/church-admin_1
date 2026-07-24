@@ -120,4 +120,17 @@ export const CommitteesAPI = {
   update: (id, data) => api.put(`/committees/${id}`, data),
   addMember: (id, data) => api.post(`/committees/${id}/members`, data),
   removeMember: (id, memberId) => api.delete(`/committees/${id}/members`, { data: { member_id: memberId } }),
+  availableTitles: (committeeId) => api.get(`/committees/${committeeId}/available-titles`),
+}
+
+// ---- Missions (Itération 2) ----
+
+export const MissionsAPI = {
+  get: () => api.get('/missions'),
+}
+
+// ---- Contact (Itération 2) ----
+
+export const ContactAPI = {
+  send: (data) => api.post('/contact', data),
 }

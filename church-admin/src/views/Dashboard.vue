@@ -103,6 +103,9 @@ onMounted(loadStats)
         <RouterLink v-if="auth.canManageUsers" to="/users" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Gérer les utilisateurs →
         </RouterLink>
+        <RouterLink to="/committees" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
+          Comités →
+        </RouterLink>
         <RouterLink v-if="auth.isAdmin" to="/sanctions" class="rounded-md border border-rule bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-gold hover:text-ink">
           Voir les sanctions →
         </RouterLink>

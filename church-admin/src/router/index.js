@@ -21,6 +21,9 @@ const routes = [
   { path: '/members/:id/edit', name: 'member-edit', component: () => import('../views/Members/MemberForm.vue'), props: true, meta: { requiresChurchAdmin: true } },
   // Users (Itération 1)
   { path: '/users', name: 'users', component: () => import('../views/Users/UserList.vue'), meta: { requiresAdmin: true } },
+  // Committees (Itération 2)
+  { path: '/committees', name: 'committees', component: () => import('../views/Committees/CommitteeList.vue') },
+  { path: '/committees/:id', name: 'committee-show', component: () => import('../views/Committees/CommitteeShow.vue'), props: true },
   // Sanctions (Itération 1)
   { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { requiresAdmin: true } },
   // Password management

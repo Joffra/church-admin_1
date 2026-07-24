@@ -55,6 +55,10 @@ export const useAuthStore = defineStore('auth', {
     // transfer-members gate: mission_admin → true,
     // church_admin → does NOT have member:transfer → false
     canTransferMembers: (state) => state.user?.role === 'mission_admin',
+    // ---- Committee management (Itération 2) ----
+    // manage-committees gate: requires committee:manage permission
+    // church_admin has it; mission_admin needs backend fix (missing in hardcoded perms)
+    canManageCommittees: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
 
     userChurchId: (state) => state.user?.church_id || null,
     // The member_id of the currently logged-in user (login response provides this)
