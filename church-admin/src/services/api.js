@@ -71,7 +71,7 @@ export const MembersAPI = {
   }),
   remove: (id) => api.delete(`/members/${id}`),
   sanction: (id, data) => api.post(`/members/${id}/sanction`, data),
-  liftSanction: (id, lifted_reason) => api.patch(`/members/${id}/sanction/lift`, { lifted_reason }),
+  liftSanction: (id, lifted_reason) => api.post(`/members/${id}/sanction/lift`, { lifted_reason }),
   transfer: (id, new_church_id) => api.patch(`/members/${id}/transfer`, { new_church_id }),
   availablePastors: () => api.get('/pastors'),
   availableAdmins: () => api.get('/available-users'),
@@ -122,7 +122,6 @@ export const CommitteesAPI = {
   removeMember: (id, memberId) => api.delete(`/committees/${id}/members`, { data: { member_id: memberId } }),
   availableTitles: (committeeId) => api.get(`/committees/${committeeId}/available-titles`),
 }
-
 // ---- Missions (Itération 2) ----
 
 export const MissionsAPI = {
@@ -133,4 +132,11 @@ export const MissionsAPI = {
 
 export const ContactAPI = {
   send: (data) => api.post('/contact', data),
+}
+
+// ---- Daily Verse (Itération 2) ----
+// Public endpoint — no auth required
+
+export const DailyVerseAPI = {
+  getVerse: (data) => api.post('/daily-verse', data),
 }
