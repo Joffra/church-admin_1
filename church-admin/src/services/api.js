@@ -145,6 +145,6 @@ export const DailyVerseAPI = {
 
 export const PortalAPI = {
   getMission: () => api.get("/public/mission"),
-  getChurches: (params) => api.get('/churches', { params }),
+  getChurches: (params) => api.get('/public/churches', { params }),
   sendContact: (data) => api.post('/public/contact', data),
 }
