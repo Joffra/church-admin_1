@@ -59,7 +59,7 @@ async function loadPastors() {
 async function loadMembers() {
   loadingMembers.value = true
   try {
-    const { data } = await MembersAPI.list()
+    const { data } = await MembersAPI.availableAdmins()
     members.value = Array.isArray(data) ? data : (data.data ?? [])
   } catch {
     // silent

@@ -74,6 +74,7 @@ export const MembersAPI = {
   liftSanction: (id, lifted_reason) => api.patch(`/members/${id}/sanction/lift`, { lifted_reason }),
   transfer: (id, new_church_id) => api.patch(`/members/${id}/transfer`, { new_church_id }),
   availablePastors: () => api.get('/pastors'),
+  availableAdmins: () => api.get('/available-users'),
 }
 
 // ---- Users ----
