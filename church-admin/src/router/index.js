@@ -4,7 +4,16 @@ import Login from '../views/Login.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
+  // ---- Public portal (no auth required) ----
+  { path: '/portail', name: 'portal-home', component: () => import('../views/Portal/PortalHome.vue'), meta: { portal: true } },
+  { path: '/portail/mission', name: 'portal-mission', component: () => import('../views/Portal/PortalMission.vue'), meta: { portal: true } },
+  { path: '/portail/eglises', name: 'portal-churches', component: () => import('../views/Portal/PortalChurches.vue'), meta: { portal: true } },
+  { path: '/portail/contact', name: 'portal-contact', component: () => import('../views/Portal/PortalContact.vue'), meta: { portal: true } },
+
+  // ---- Auth ----
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
+
+  // ---- Admin (auth required) ----
   { path: '/', name: 'dashboard', component: Dashboard },
   // Own profile page — reads from auth store only, no API call, accessible to all authenticated users
   { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
@@ -40,8 +49,8 @@ const router = createRouter({
 router.beforeEach((to, from) => {
   const auth = useAuthStore()
 
-  // 1. Public routes — always allow
-  if (to.meta.public) return true
+  // 1. Portal & public routes — always allow
+  if (to.meta.portal || to.meta.public) return true
 
   // 2. Must be authenticated for everything else
   if (!auth.isAuthenticated) {
@@ -69,15 +78,11 @@ router.beforeEach((to, from) => {
   }
 
   // 7. Create/edit member: church_admin ONLY
-  //    mission_admin is explicitly blocked by the backend (store() returns 403).
-  //    requiresChurchAdmin guard must use canCreateMembers, not canManageMembers.
   if (to.meta.requiresChurchAdmin && !auth.canCreateMembers) {
     return { name: 'members' }
   }
 
-  // 8. Member detail page: admins only — regular users cannot call GET /members/:id
-  //    (view-members gate requires member:view-any permission, not granted to regular users)
-  //    Regular users are redirected to /profile which reads from the auth store instead
+  // 8. Member detail page: admins only
   if (to.meta.requiresMemberShow) {
     if (auth.isAdmin) return true
     return { name: 'profile' }

@@ -140,3 +140,11 @@ export const ContactAPI = {
 export const DailyVerseAPI = {
   getVerse: (data) => api.post('/daily-verse', data),
 }
+
+// ---- Portal (public, no auth) ----
+
+export const PortalAPI = {
+  getMission: () => api.get('/public/missions'),
+  getChurches: (params) => api.get('/public/churches', { params }),
+  sendContact: (data) => api.post('/public/contact', data),
+}
