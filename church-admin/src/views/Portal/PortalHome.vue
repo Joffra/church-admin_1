@@ -4,19 +4,19 @@ import heroImg from '../../assets/hero.png'
 
 const cards = [
   {
-    to: '/portail/mission',
+    to: '/mission',
     title: 'Notre Mission',
     description: "Découvrez l'histoire, la vision et les dirigeants de MECEIPH.",
     icon: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z',
   },
   {
-    to: '/portail/eglises',
+    to: '/eglises',
     title: 'Nos Églises',
     description: "Trouvez une église près de chez vous et ses informations de contact.",
     icon: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6',
   },
   {
-    to: '/portail/contact',
+    to: '/contact',
     title: 'Nous Contacter',
     description: "Une question ? Écrivez-nous via le formulaire de contact.",
     icon: 'M4 4h16v12H4zM4 16l4-4 4 4 4-4 4 4M4 20l6-6 6 6',
@@ -42,13 +42,13 @@ const cards = [
           </p>
           <div class="mt-10 flex flex-wrap gap-4">
             <RouterLink
-              to="/portail/mission"
+              to="/mission"
               class="rounded-md bg-gold px-6 py-3 text-sm font-semibold text-ink-dark transition hover:bg-gold-light"
             >
               Découvrir la mission
             </RouterLink>
             <RouterLink
-              to="/portail/eglises"
+              to="/eglises"
               class="rounded-md border border-parchment/30 px-6 py-3 text-sm font-semibold text-parchment transition hover:bg-white/10"
             >
               Voir les églises

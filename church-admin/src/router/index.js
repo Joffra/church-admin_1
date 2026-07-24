@@ -5,16 +5,16 @@ import { useAuthStore } from '../stores/auth'
 
 const routes = [
   // ---- Public portal (no auth required) ----
-  { path: '/portail', name: 'portal-home', component: () => import('../views/Portal/PortalHome.vue'), meta: { portal: true } },
-  { path: '/portail/mission', name: 'portal-mission', component: () => import('../views/Portal/PortalMission.vue'), meta: { portal: true } },
-  { path: '/portail/eglises', name: 'portal-churches', component: () => import('../views/Portal/PortalChurches.vue'), meta: { portal: true } },
-  { path: '/portail/contact', name: 'portal-contact', component: () => import('../views/Portal/PortalContact.vue'), meta: { portal: true } },
+  { path: '/', name: 'portal-home', component: () => import('../views/Portal/PortalHome.vue'), meta: { portal: true } },
+  { path: '/mission', name: 'portal-mission', component: () => import('../views/Portal/PortalMission.vue'), meta: { portal: true } },
+  { path: '/eglises', name: 'portal-churches', component: () => import('../views/Portal/PortalChurches.vue'), meta: { portal: true } },
+  { path: '/contact', name: 'portal-contact', component: () => import('../views/Portal/PortalContact.vue'), meta: { portal: true } },
 
   // ---- Auth ----
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
 
   // ---- Admin (auth required) ----
-  { path: '/', name: 'dashboard', component: Dashboard },
+  { path: '/admin', name: 'dashboard', component: Dashboard },
   // Own profile page — reads from auth store only, no API call, accessible to all authenticated users
   { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
   // Churches — list and detail are public to all authenticated users
@@ -49,7 +49,7 @@ const router = createRouter({
 router.beforeEach((to, from) => {
   const auth = useAuthStore()
 
-  // 1. Portal & public routes — always allow
+  // 1. Portal & public routes — always allow (portal is the public face)
   if (to.meta.portal || to.meta.public) return true
 
   // 2. Must be authenticated for everything else

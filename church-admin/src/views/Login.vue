@@ -17,7 +17,7 @@ async function onSubmit() {
   submitted.value = true
   const ok = await auth.login(member_code.value.trim(), password.value)
   if (ok) {
-    const redirect = route.query.redirect || '/'
+    const redirect = route.query.redirect || '/admin'
     router.push(redirect)
   }
 }

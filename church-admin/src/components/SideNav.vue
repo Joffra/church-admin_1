@@ -23,7 +23,7 @@ const navGroups = computed(() => {
     {
       label: 'Vue d\'ensemble',
       items: [
-        { to: '/', label: 'Tableau de bord' },
+        { to: '/admin', label: 'Tableau de bord' },
       ],
     },
     {

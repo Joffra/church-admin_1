@@ -27,7 +27,7 @@ onMounted(async () => {
   <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
     <!-- Breadcrumb -->
     <p class="text-sm text-ink-dark/40">
-      <RouterLink to="/portail" class="hover:text-gold">Accueil</RouterLink>
+      <RouterLink to="/" class="hover:text-gold">Accueil</RouterLink>
       <span class="mx-2">/</span>
       <span class="text-ink-dark/60">Mission</span>
     </p>
@@ -138,7 +138,7 @@ onMounted(async () => {
         <p class="mt-2 font-display text-3xl text-ink-dark">{{ mission.churches.length }}</p>
         <p class="text-sm text-ink-dark/50">églises sous l'égide de la mission</p>
         <RouterLink
-          to="/portail/eglises"
+          to="/eglises"
           class="mt-4 inline-flex text-sm font-medium text-gold hover:underline"
         >
           Voir toutes les églises →

@@ -25,10 +25,10 @@ const year = new Date().getFullYear()
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.14em] text-parchment/40">Navigation</p>
           <ul class="mt-3 space-y-2 text-sm">
-            <li><RouterLink to="/portail" class="hover:text-gold transition-colors">Accueil</RouterLink></li>
-            <li><RouterLink to="/portail/mission" class="hover:text-gold transition-colors">Notre mission</RouterLink></li>
-            <li><RouterLink to="/portail/eglises" class="hover:text-gold transition-colors">Nos églises</RouterLink></li>
-            <li><RouterLink to="/portail/contact" class="hover:text-gold transition-colors">Nous contacter</RouterLink></li>
+            <li><RouterLink to="/" class="hover:text-gold transition-colors">Accueil</RouterLink></li>
+            <li><RouterLink to="/mission" class="hover:text-gold transition-colors">Notre mission</RouterLink></li>
+            <li><RouterLink to="/eglises" class="hover:text-gold transition-colors">Nos églises</RouterLink></li>
+            <li><RouterLink to="/contact" class="hover:text-gold transition-colors">Nous contacter</RouterLink></li>
           </ul>
         </div>
 

@@ -7,14 +7,14 @@ const route = useRoute()
 const auth = useAuthStore()
 
 const links = [
-  { to: '/portail', label: 'Accueil' },
-  { to: '/portail/mission', label: 'Mission' },
-  { to: '/portail/eglises', label: 'Églises' },
-  { to: '/portail/contact', label: 'Contact' },
+  { to: '/', label: 'Accueil' },
+  { to: '/mission', label: 'Mission' },
+  { to: '/eglises', label: 'Églises' },
+  { to: '/contact', label: 'Contact' },
 ]
 
 function isActive(path) {
-  if (path === '/portail') return route.path === '/portail'
+  if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
 }
 </script>
@@ -22,7 +22,7 @@ function isActive(path) {
 <template>
   <header class="sticky top-0 z-50 border-b border-white/10 bg-ink/95 backdrop-blur">
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-      <RouterLink to="/portail" class="flex items-center gap-3">
+      <RouterLink to="/" class="flex items-center gap-3">
         <img :src="logo" alt="MECEIPH" class="h-9 w-9 object-contain" />
         <div>
           <p class="font-display text-sm leading-tight text-parchment">MECEIPH</p>
@@ -43,10 +43,10 @@ function isActive(path) {
       </nav>
 
       <RouterLink
-        :to="auth.isAuthenticated ? '/' : '/login'"
+        :to="auth.isAuthenticated ? '/admin' : '/login'"
         class="rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark"
       >
-        {{ auth.isAuthenticated ? 'Tableau de bord' : 'Espace admin' }}
+        {{ auth.isAuthenticated ? 'Tableau de bord' : 'Connexion' }}
       </RouterLink>
     </div>
 

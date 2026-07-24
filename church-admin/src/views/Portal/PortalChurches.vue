@@ -44,7 +44,7 @@ onMounted(async () => {
   <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
     <!-- Breadcrumb -->
     <p class="text-sm text-ink-dark/40">
-      <RouterLink to="/portail" class="hover:text-gold">Accueil</RouterLink>
+      <RouterLink to="/" class="hover:text-gold">Accueil</RouterLink>
       <span class="mx-2">/</span>
       <span class="text-ink-dark/60">Églises</span>
     </p>
