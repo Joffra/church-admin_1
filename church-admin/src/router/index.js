@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Login from '../views/Login.vue'
-import NotFound from '../views/NotFound.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -30,7 +29,7 @@ const routes = [
   { path: '/password/change', name: 'password-change', component: () => import('../views/ChangePassword.vue') },
   { path: '/password/reset', name: 'password-reset', component: () => import('../views/ResetPassword.vue'), meta: { public: true } },
   // 404 catch-all — must be last
-  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFound, meta: { public: true } },
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('../views/NotFound.vue'), meta: { public: true } },
 ]
 
 const router = createRouter({
