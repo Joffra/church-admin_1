@@ -253,7 +253,7 @@ onMounted(load)
             <p class="text-[11px] uppercase tracking-wide text-ink-dark/40">Pasteur responsable</p>
             <p class="mt-0.5 text-sm font-medium text-ink-dark">{{ pastorName(church) }}</p>
             <RouterLink
-              v-if="church.pastor?.id"
+              v-if="church.pastor?.id && auth.canViewMembers"
               :to="{ name: 'member-show', params: { id: church.pastor.id } }"
               class="mt-1 inline-block text-xs text-gold hover:underline"
             >
@@ -275,7 +275,7 @@ onMounted(load)
             <p class="text-[11px] uppercase tracking-wide text-ink-dark/40">Administrateur d'église</p>
             <p class="mt-0.5 text-sm font-medium text-ink-dark">{{ adminName(church) }}</p>
             <RouterLink
-              v-if="church.admin?.id"
+              v-if="church.admin?.id && auth.canViewMembers"
               :to="{ name: 'member-show', params: { id: church.admin.id } }"
               class="mt-1 inline-block text-xs text-gold hover:underline"
             >
