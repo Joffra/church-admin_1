@@ -46,6 +46,19 @@ const router = createRouter({
   routes,
 })
 
+// Set browser tab title based on route section
+router.afterEach((to) => {
+  if (to.meta.portal) {
+    document.title = 'MECEIPH.portail web'
+  } else if (to.meta.public) {
+    // Login, password reset — all admin-facing public pages
+    document.title = 'MECEIPH.administration'
+  } else {
+    // All authenticated admin pages
+    document.title = 'MECEIPH.administration'
+  }
+})
+
 router.beforeEach((to, from) => {
   const auth = useAuthStore()
 
