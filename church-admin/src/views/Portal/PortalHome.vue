@@ -1,6 +1,7 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 import heroImg from '../../assets/hero.png'
+import DailyVerseWidget from '../../components/DailyVerseWidget.vue'
 
 const cards = [
   {
@@ -79,14 +80,19 @@ const cards = [
       </div>
     </section>
 
-    <!-- Verse section -->
+    <!-- Daily Verse (dynamic, AI-generated) -->
     <section class="bg-ink/5">
-      <div class="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Notre vocation</p>
-        <blockquote class="mt-6 font-display text-2xl leading-relaxed text-ink-dark sm:text-3xl">
-          « Allez par tout le monde, et prêchez la bonne nouvelle à toute la création. »
-        </blockquote>
-        <p class="mt-4 text-sm text-ink-dark/50">Marc 16:15</p>
+      <div class="mx-auto max-w-4xl px-4 py-16 sm:px-6">
+        <DailyVerseWidget />
+
+        <!-- Static mission verse below -->
+        <div class="mt-12 text-center">
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Notre vocation</p>
+          <blockquote class="mt-6 font-display text-2xl leading-relaxed text-ink-dark sm:text-3xl">
+            « Allez par tout le monde, et prêchez la bonne nouvelle à toute la création. »
+          </blockquote>
+          <p class="mt-4 text-sm text-ink-dark/50">Marc 16:15</p>
+        </div>
       </div>
     </section>
   </div>
