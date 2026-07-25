@@ -8,13 +8,17 @@ import logo from '../assets/logo.png'
 const router = useRouter()
 const auth = useAuthStore()
 
-// Step 1 = enter email, Step 2 = enter verification code
+// Step 1 = enter email, Step 2 = enter code
 const step = ref(1)
 
 const email = ref('')
 const code = ref('')
 const loading = ref(false)
-const success = ref('')
+
+// Two separate success states: one for email sent, one for code verified
+const emailSentMsg = ref('')   // shown ON step 2 form (green banner above the code input)
+const verifiedMsg = ref('')    // shown after successful code verification (final state)
+
 const error = ref('')
 const fieldErrors = ref({})
 
@@ -31,12 +35,13 @@ const stepDescription = computed(() =>
 async function onSendCode() {
   loading.value = true
   error.value = ''
-  success.value = ''
+  emailSentMsg.value = ''
   fieldErrors.value = {}
 
   try {
     const { data } = await AuthAPI.sendResetCode(email.value)
-    success.value = data.message || 'Code de vérification envoyé par email.'
+    // Move to step 2 AND show the confirmation banner there
+    emailSentMsg.value = data.message || 'Un code de vérification a été envoyé à votre adresse email.'
     step.value = 2
   } catch (e) {
     if (e.response?.status === 422 && e.response.data?.errors) {
@@ -55,17 +60,16 @@ async function onSendCode() {
 async function onVerifyCode() {
   loading.value = true
   error.value = ''
-  success.value = ''
   fieldErrors.value = {}
 
   try {
     const { data } = await AuthAPI.verifyResetCode(email.value, code.value)
-    success.value = data.message || 'Votre mot de passe a été réinitialisé. Un mot de passe temporaire vous a été envoyé par email.'
-    // The system kills all sessions per the use case — log out locally
+    // Code verified — show final success and redirect to login
+    verifiedMsg.value = data.message || 'Votre mot de passe a été réinitialisé. Un mot de passe temporaire vous a été envoyé par email.'
     setTimeout(() => {
       auth.logout()
       router.push({ name: 'login' })
-    }, 3000)
+    }, 3500)
   } catch (e) {
     if (e.response?.status === 422 && e.response.data?.errors) {
       fieldErrors.value = e.response.data.errors
@@ -84,7 +88,7 @@ function backToStep1() {
   step.value = 1
   code.value = ''
   error.value = ''
-  success.value = ''
+  emailSentMsg.value = ''
   fieldErrors.value = {}
 }
 </script>
@@ -106,18 +110,7 @@ function backToStep1() {
         <h2 class="font-display text-xl text-parchment">{{ stepTitle }}</h2>
         <p class="mt-1 text-sm text-parchment/50">{{ stepDescription }}</p>
 
-        <!-- Success banner -->
-        <div
-          v-if="success"
-          class="mt-5 flex items-start gap-2 rounded-md border border-sage/40 bg-sage/10 px-4 py-3 text-sm text-sage"
-        >
-          <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <span>{{ success }}</span>
-        </div>
-
-        <!-- Error banner -->
+        <!-- Error banner (shared) -->
         <div
           v-if="error"
           class="mt-5 rounded-md border border-rust/40 bg-rust/10 px-4 py-3 text-sm text-rust"
@@ -125,8 +118,8 @@ function backToStep1() {
           {{ error }}
         </div>
 
-        <!-- Step 1: Email -->
-        <form v-if="step === 1 && !success" class="mt-6 space-y-4" @submit.prevent="onSendCode">
+        <!-- ── STEP 1: Email ── -->
+        <form v-if="step === 1" class="mt-6 space-y-4" @submit.prevent="onSendCode">
           <div>
             <label for="email" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-parchment/60">
               Adresse email
@@ -157,47 +150,73 @@ function backToStep1() {
           </button>
         </form>
 
-        <!-- Step 2: Verification code -->
-        <form v-if="step === 2 && !success" class="mt-6 space-y-4" @submit.prevent="onVerifyCode">
-          <div>
-            <label for="code" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-parchment/60">
-              Code de vérification
-            </label>
-            <input
-              id="code"
-              v-model="code"
-              type="text"
-              inputmode="numeric"
-              maxlength="6"
-              required
-              :disabled="loading"
-              class="w-full rounded-md border border-white/15 bg-ink px-3.5 py-2.5 text-center font-mono text-lg tracking-[0.5em] text-parchment placeholder:text-parchment/30 outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-              placeholder="000000"
-            />
-            <p v-if="fieldErrors.code" class="mt-1 text-xs text-rust">{{ fieldErrors.code[0] }}</p>
+        <!-- ── STEP 2: Code verification ── -->
+        <div v-if="step === 2">
+          <!-- Final success (code verified) -->
+          <div
+            v-if="verifiedMsg"
+            class="mt-5 flex items-start gap-2 rounded-md border border-sage/40 bg-sage/10 px-4 py-3 text-sm text-sage"
+          >
+            <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>{{ verifiedMsg }}</span>
           </div>
 
-          <button
-            type="submit"
-            :disabled="loading"
-            class="flex w-full items-center justify-center gap-2 rounded-md bg-gold px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <svg v-if="loading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            {{ loading ? 'Vérification…' : 'Vérifier le code' }}
-          </button>
+          <!-- Code entry form (shown until code is verified) -->
+          <form v-else class="mt-6 space-y-4" @submit.prevent="onVerifyCode">
+            <!-- Email sent confirmation banner -->
+            <div
+              v-if="emailSentMsg"
+              class="flex items-start gap-2 rounded-md border border-sage/40 bg-sage/10 px-4 py-3 text-sm text-sage"
+            >
+              <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>{{ emailSentMsg }}</span>
+            </div>
 
-          <button
-            type="button"
-            @click="backToStep1"
-            :disabled="loading"
-            class="w-full text-center text-xs text-parchment/40 transition hover:text-parchment/70"
-          >
-            ← Changer d'adresse email
-          </button>
-        </form>
+            <div>
+              <label for="code" class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-parchment/60">
+                Code de vérification
+              </label>
+              <input
+                id="code"
+                v-model="code"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                required
+                autofocus
+                :disabled="loading"
+                class="w-full rounded-md border border-white/15 bg-ink px-3.5 py-2.5 text-center font-mono text-lg tracking-[0.5em] text-parchment placeholder:text-parchment/30 outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
+                placeholder="000000"
+              />
+              <p v-if="fieldErrors.code" class="mt-1 text-xs text-rust">{{ fieldErrors.code[0] }}</p>
+            </div>
+
+            <button
+              type="submit"
+              :disabled="loading"
+              class="flex w-full items-center justify-center gap-2 rounded-md bg-gold px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <svg v-if="loading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              {{ loading ? 'Vérification…' : 'Vérifier le code' }}
+            </button>
+
+            <button
+              type="button"
+              @click="backToStep1"
+              :disabled="loading"
+              class="w-full text-center text-xs text-parchment/40 transition hover:text-parchment/70"
+            >
+              ← Changer d'adresse email
+            </button>
+          </form>
+        </div>
       </div>
 
       <p class="mt-6 text-center text-xs text-parchment/30">
