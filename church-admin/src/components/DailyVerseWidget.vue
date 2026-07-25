@@ -3,9 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { DailyVerseAPI } from '../services/api'
 
 // ---- State ----
-const verse = ref(null)          // { reference, text, reflection, theme, user_mood, topics }
-const showMoodModal = ref(false)  // popup asking mood/theme
-const showDetails = ref(false)    // expand verse card to show reflection
+const verse = ref(null)
+const showMoodModal = ref(false)
+const expanded = ref(false)
 const loading = ref(false)
 const error = ref('')
 
@@ -27,7 +27,7 @@ const STORAGE_KEY = 'meceiph_daily_verse'
 const CHANGE_COUNT_KEY = 'meceiph_daily_verse_changes'
 
 function getTodayKey() {
-  return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local tz
+  return new Date().toLocaleDateString('en-CA')
 }
 
 function getStoredVerse() {
@@ -128,7 +128,6 @@ async function skipMood() {
 async function changeVerse() {
   if (remainingChanges.value <= 0) return
   incrementChangeCount()
-  // Reuse the same mood modal for changing verse
   openMoodModal()
 }
 
@@ -138,7 +137,6 @@ onMounted(() => {
   if (stored) {
     verse.value = stored
   } else {
-    // Show the mood modal on first visit of the day
     openMoodModal()
   }
 })
@@ -146,104 +144,109 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Verse Card (subtle, non-imposing) -->
-    <div
-      v-if="verse && !loading"
-      class="rounded-xl border border-gold/20 bg-white/80 backdrop-blur-sm shadow-sm overflow-hidden transition-all"
-    >
-      <!-- Compact view -->
-      <button
-        @click="showDetails = !showDetails"
-        class="w-full text-left p-5 transition hover:bg-gold/5"
+    <!-- Floating verse pill (collapsed — always visible) -->
+    <transition name="verse-fade">
+      <div
+        v-if="verse && !loading && !expanded"
+        class="fixed bottom-6 left-6 z-40"
       >
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex-1">
-            <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-gold/80">
-              Verset du jour
-            </p>
-            <p class="mt-2 font-display text-lg leading-snug text-ink-dark">
-              « {{ verse.text }} »
-            </p>
-            <p class="mt-1.5 text-xs font-medium text-gold">— {{ verse.reference }}</p>
-          </div>
-          <svg
-            class="mt-1 h-4 w-4 shrink-0 text-ink-dark/30 transition-transform"
-            :class="showDetails ? 'rotate-180' : ''"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          >
-            <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </div>
-      </button>
+        <button
+          @click="expanded = true"
+          class="group flex max-w-[280px] items-center gap-3 rounded-full border border-gold/30 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-sm transition hover:bg-white hover:border-gold/50 hover:shadow-xl"
+        >
+          <!-- Book icon -->
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold transition group-hover:bg-gold group-hover:text-ink-dark">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="min-w-0 text-left">
+            <span class="block text-[10px] font-semibold uppercase tracking-wide text-gold/80">Verset du jour</span>
+            <span class="block truncate text-xs font-medium text-ink-dark/70">{{ verse.reference }}</span>
+          </span>
+        </button>
+      </div>
+    </transition>
 
-      <!-- Expanded details -->
-      <transition name="expand">
-        <div v-show="showDetails" class="border-t border-gold/10 px-5 pb-5 pt-4 bg-parchment/30">
-          <!-- Theme & mood context -->
-          <div class="mb-4 flex flex-wrap gap-2">
+    <!-- Expanded verse card (floating overlay) -->
+    <transition name="verse-expand">
+      <div
+        v-if="verse && expanded"
+        class="fixed bottom-6 left-6 z-40 w-[20rem] max-w-[calc(100vw-3rem)] rounded-2xl border border-gold/20 bg-white shadow-2xl overflow-hidden"
+      >
+        <!-- Header bar -->
+        <div class="flex items-center justify-between bg-ink px-4 py-3">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-gold">Verset du jour</p>
+          <button
+            @click="expanded = false"
+            class="rounded-md p-1 text-parchment/40 transition hover:bg-white/10 hover:text-parchment"
+            aria-label="Réduire"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 14l-7-7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Verse content -->
+        <div class="p-5">
+          <p class="font-display text-base leading-snug text-ink-dark">
+            « {{ verse.text }} »
+          </p>
+          <p class="mt-1.5 text-xs font-medium text-gold">— {{ verse.reference }}</p>
+
+          <!-- Theme & mood tags -->
+          <div class="mt-3 flex flex-wrap gap-1.5">
             <span
               v-if="verse.theme"
-              class="inline-flex items-center rounded-full bg-gold/15 px-2.5 py-1 text-[11px] font-medium text-ink-dark/70"
+              class="inline-flex items-center rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-ink-dark/70"
             >
               {{ verse.theme }}
             </span>
             <span
               v-if="verse.user_mood"
-              class="inline-flex items-center rounded-full bg-ink/5 px-2.5 py-1 text-[11px] text-ink-dark/55"
+              class="inline-flex items-center rounded-full bg-ink/5 px-2 py-0.5 text-[10px] text-ink-dark/55"
             >
               « {{ verse.user_mood }} »
-            </span>
-            <span
-              v-if="verse.topics && verse.topics.length"
-              v-for="t in verse.topics"
-              :key="t"
-              class="inline-flex items-center rounded-full bg-ink/5 px-2.5 py-1 text-[11px] text-ink-dark/55"
-            >
-              {{ t }}
             </span>
           </div>
 
           <!-- Reflection -->
-          <p class="text-sm leading-relaxed text-ink-dark/70 italic">
+          <p class="mt-3 border-t border-rule pt-3 text-xs leading-relaxed text-ink-dark/60 italic">
             {{ verse.reflection }}
           </p>
 
-          <!-- Change verse button -->
-          <div class="mt-4 flex items-center justify-between border-t border-gold/10 pt-3">
+          <!-- Change verse -->
+          <div class="mt-3 border-t border-rule pt-2.5">
             <button
               v-if="remainingChanges > 0"
               @click="changeVerse"
               :disabled="loading"
-              class="text-xs font-medium text-gold hover:underline transition disabled:opacity-50"
+              class="text-[11px] font-medium text-gold hover:underline transition disabled:opacity-50"
             >
-              ⟳ Changer de verset ({{ remainingChanges }} restant{{ remainingChanges > 1 ? 's' : '' }})
+              ⟳ Changer ({{ remainingChanges }} restant{{ remainingChanges > 1 ? 's' : '' }})
             </button>
-            <p v-else class="text-xs text-ink-dark/35">
-              Limite de versets atteinte pour aujourd'hui
+            <p v-else class="text-[11px] text-ink-dark/35">
+              Limite atteinte pour aujourd'hui
             </p>
           </div>
         </div>
-      </transition>
-    </div>
+      </div>
+    </transition>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="rounded-xl border border-gold/20 bg-white/80 p-5 text-center">
-      <div class="inline-flex items-center gap-2 text-sm text-ink-dark/50">
+    <!-- Loading pill (floating) -->
+    <transition name="verse-fade">
+      <div
+        v-if="loading"
+        class="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full border border-gold/30 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-sm"
+      >
         <svg class="h-4 w-4 animate-spin text-gold" viewBox="0 0 24 24" fill="none">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
-        Génération de votre verset…
+        <span class="text-xs text-ink-dark/60">Verset…</span>
       </div>
-    </div>
-
-    <!-- Error -->
-    <div v-if="error && !loading" class="rounded-xl border border-rust/20 bg-rust/5 p-4 text-center">
-      <p class="text-sm text-rust">{{ error }}</p>
-      <button @click="openMoodModal" class="mt-2 text-xs font-medium text-gold hover:underline">
-        Réessayer
-      </button>
-    </div>
+    </transition>
 
     <!-- Mood Modal (first visit / change verse) -->
     <div
@@ -325,19 +328,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s ease;
-  overflow: hidden;
+.verse-fade-enter-active,
+.verse-fade-leave-active {
+  transition: all 0.25s ease;
 }
-.expand-enter-from,
-.expand-leave-to {
+.verse-fade-enter-from,
+.verse-fade-leave-to {
   opacity: 0;
-  max-height: 0;
+  transform: translateY(10px);
 }
-.expand-enter-to,
-.expand-leave-from {
-  opacity: 1;
-  max-height: 500px;
+
+.verse-expand-enter-active,
+.verse-expand-leave-active {
+  transition: all 0.3s ease;
+}
+.verse-expand-enter-from,
+.verse-expand-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
 }
 </style>

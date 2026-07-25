@@ -4,6 +4,7 @@ import SideNav from './components/SideNav.vue'
 import PortalNav from './components/PortalNav.vue'
 import PortalFooter from './components/PortalFooter.vue'
 import AiChatWidget from './components/AiChatWidget.vue'
+import DailyVerseWidget from './components/DailyVerseWidget.vue'
 
 const route = useRoute()
 </script>
@@ -16,7 +17,8 @@ const route = useRoute()
       <RouterView />
     </main>
     <PortalFooter />
-    <!-- AI assistant floating chat — visible on all portal pages -->
+    <!-- Floating overlays — visible on all portal pages -->
+    <DailyVerseWidget />
     <AiChatWidget />
   </div>
 
