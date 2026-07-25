@@ -11,7 +11,7 @@ const year = new Date().getFullYear()
       <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <div class="flex items-center gap-3">
-            <img :src="logo" alt="MECEIPH" class="h-8 w-8 object-contain" />
+            <img :src="logo" alt="MECEIPH" class="brand-logo h-8 w-8 object-contain" />
             <div>
               <p class="font-display text-sm text-parchment">MECEIPH</p>
               <p class="text-[10px] uppercase tracking-[0.16em] text-gold/80">Mission Évangélique</p>
