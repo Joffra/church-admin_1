@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { CommitteesAPI, MembersAPI, TitlesAPI } from '../../services/api'
+import { CommitteesAPI, MembersAPI, TitlesAPI, ChurchesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
@@ -33,6 +33,14 @@ const editForm = ref({ name: '', description: '' })
 const editError = ref('')
 const editing = ref(false)
 
+// Change pastor modal
+const showPastorModal = ref(false)
+const pastors = ref([])
+const loadingPastors = ref(false)
+const selectedPastorId = ref('')
+const changingPastor = ref(false)
+const pastorError = ref('')
+
 function structureLabel(type) {
   if (type === 'mission') return 'Mission'
   if (type === 'church') return 'Église'
@@ -43,6 +51,10 @@ function structureLabel(type) {
 function formatDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('fr-FR')
+}
+
+function isPasteurResponsable(member) {
+  return member?.assignment?.title?.name === 'Pasteur Responsable'
 }
 
 const sortedMembers = computed(() => {
@@ -165,6 +177,46 @@ async function handleEdit() {
   }
 }
 
+// ---- Change pastor (reuses existing endpoint) ----
+async function openPastorModal() {
+  showPastorModal.value = true
+  pastorError.value = ''
+  selectedPastorId.value = ''
+  loadingPastors.value = true
+  try {
+    const { data } = await MembersAPI.availablePastors()
+    pastors.value = Array.isArray(data) ? data : (data.data ?? [])
+  } catch (e) {
+    pastorError.value = 'Impossible de charger la liste des pasteurs.'
+  } finally {
+    loadingPastors.value = false
+  }
+}
+
+async function handleChangePastor() {
+  if (!selectedPastorId.value) {
+    pastorError.value = 'Veuillez sélectionner un pasteur.'
+    return
+  }
+  const churchId = committee.value?.structure?.structurable_id
+  if (!churchId) {
+    pastorError.value = 'Impossible d\'identifier l\'église associée à ce comité.'
+    return
+  }
+  changingPastor.value = true
+  pastorError.value = ''
+  try {
+    await ChurchesAPI.changePastor(churchId, selectedPastorId.value)
+    showPastorModal.value = false
+    successMessage.value = 'Pasteur responsable changé avec succès.'
+    await loadCommittee()
+  } catch (e) {
+    pastorError.value = e.response?.data?.message || 'Impossible de changer le pasteur responsable.'
+  } finally {
+    changingPastor.value = false
+  }
+}
+
 onMounted(loadCommittee)
 </script>
 
@@ -259,7 +311,17 @@ onMounted(loadCommittee)
               </td>
               <td class="px-5 py-3.5 text-ink-dark/60">{{ formatDate(m.assignment?.assigned_at) }}</td>
               <td v-if="auth.canManageCommittees" class="px-5 py-3.5 text-right">
+                <!-- Pasteur Responsable: "Changer" button -->
                 <button
+                  v-if="isPasteurResponsable(m)"
+                  @click="openPastorModal"
+                  class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/70 transition hover:bg-gold/10 hover:text-ink-dark"
+                >
+                  Changer
+                </button>
+                <!-- All others: "Retirer" button -->
+                <button
+                  v-else
                   @click="removeTarget = m"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
                 >
@@ -349,6 +411,50 @@ onMounted(loadCommittee)
             class="rounded-md bg-rust px-4 py-2 text-sm font-semibold text-white transition hover:bg-rust/90 disabled:opacity-50"
           >
             {{ removing ? 'Retrait…' : 'Retirer' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Pastor Modal -->
+    <div
+      v-if="showPastorModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/40 backdrop-blur-sm"
+      @click.self="showPastorModal = false"
+    >
+      <div class="w-full max-w-md rounded-lg border border-rule bg-white p-6 shadow-xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="font-display text-lg font-bold text-ink-dark">Changer le pasteur responsable</h3>
+          <button @click="showPastorModal = false" class="text-ink-dark/40 hover:text-ink-dark transition-colors">✕</button>
+        </div>
+
+        <p v-if="pastorError" class="mb-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ pastorError }}</p>
+
+        <div v-if="loadingPastors" class="py-6 text-center text-sm text-ink-dark/40">Chargement des pasteurs disponibles…</div>
+        <div v-else class="space-y-4">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Nouveau pasteur responsable *</label>
+            <select
+              v-model="selectedPastorId"
+              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+            >
+              <option value="" disabled>Sélectionner un pasteur…</option>
+              <option v-for="p in pastors" :key="p.id" :value="p.id">
+                {{ p.first_name }} {{ p.last_name }} — {{ p.member_code }}
+              </option>
+            </select>
+            <p v-if="!pastors.length" class="mt-1 text-xs text-ink-dark/40">Aucun pasteur disponible.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3 border-t border-rule pt-4">
+          <button @click="showPastorModal = false" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">Annuler</button>
+          <button
+            :disabled="changingPastor || !selectedPastorId"
+            @click="handleChangePastor"
+            class="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-ink-dark transition hover:bg-gold/90 disabled:opacity-50"
+          >
+            {{ changingPastor ? 'Modification…' : 'Confirmer' }}
           </button>
         </div>
       </div>
