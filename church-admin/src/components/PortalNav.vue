@@ -23,7 +23,7 @@ function isActive(path) {
   <header class="sticky top-0 z-50 border-b border-white/10 bg-ink/95 backdrop-blur">
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
       <RouterLink to="/" class="flex items-center gap-3">
-        <img :src="logo" alt="MECEIPH" class="h-9 w-9 object-contain" />
+        <img :src="logo" alt="MECEIPH" class="brand-logo h-9 w-9 object-contain" />
         <div>
           <p class="font-display text-sm leading-tight text-parchment">MECEIPH</p>
           <p class="text-[10px] uppercase tracking-[0.16em] text-gold/80">Mission Évangélique</p>
