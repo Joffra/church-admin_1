@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import SideNav from './components/SideNav.vue'
 import PortalNav from './components/PortalNav.vue'
 import PortalFooter from './components/PortalFooter.vue'
+import AiChatWidget from './components/AiChatWidget.vue'
 
 const route = useRoute()
 </script>
@@ -15,6 +16,8 @@ const route = useRoute()
       <RouterView />
     </main>
     <PortalFooter />
+    <!-- AI assistant floating chat — visible on all portal pages -->
+    <AiChatWidget />
   </div>
 
   <!-- Standalone public pages (login, password reset) -->

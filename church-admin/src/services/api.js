@@ -141,6 +141,13 @@ export const DailyVerseAPI = {
   getVerse: (data) => api.post('/daily-verse', data),
 }
 
+// ---- AI Assistant (Itération 2) ----
+// Public endpoint — no auth required, rate-limited server-side
+
+export const AiAssistantAPI = {
+  chat: (messages) => api.post('/ai-assistant', { messages }),
+}
+
 // ---- Portal (public, no auth) ----
 
 export const PortalAPI = {
