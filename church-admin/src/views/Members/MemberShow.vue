@@ -440,6 +440,84 @@ onMounted(loadMember)
           </div>
         </dl>
       </div>
+
+      <!-- Committees Section -->
+      <div v-if="member.committees && member.committees.length" class="rounded-lg border border-rule bg-white p-6 shadow-sm">
+        <h2 class="mb-5 font-display text-lg font-semibold text-ink-dark border-b border-rule pb-2">
+          Comités & Postes
+        </h2>
+        <div class="space-y-3">
+          <div
+            v-for="c in member.committees"
+            :key="c.id"
+            class="flex items-center justify-between rounded-md border border-rule bg-parchment/40 px-4 py-3"
+          >
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-ink-dark">{{ c.name }}</span>
+                <span
+                  class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-xs font-medium text-ink-dark/70"
+                >
+                  {{ c.assignment?.title?.name || '—' }}
+                </span>
+              </div>
+              <p class="mt-0.5 text-xs text-ink-dark/50">
+                {{ c.structure?.name || '—' }}
+                <span v-if="c.assignment?.assigned_at" class="mx-1.5">·</span>
+                <span v-if="c.assignment?.assigned_at">Affecté le {{ formatDate(c.assignment.assigned_at) }}</span>
+              </p>
+            </div>
+            <RouterLink
+              :to="{ name: 'committee-show', params: { id: c.id } }"
+              class="text-xs text-gold hover:underline"
+            >
+              Voir →
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sanctions Section -->
+      <div v-if="member.sanctions && member.sanctions.length" class="rounded-lg border border-rule bg-white p-6 shadow-sm">
+        <h2 class="mb-5 font-display text-lg font-semibold text-ink-dark border-b border-rule pb-2">
+          Historique des sanctions
+        </h2>
+        <div class="space-y-3">
+          <div
+            v-for="s in member.sanctions"
+            :key="s.id"
+            class="rounded-md border px-4 py-3"
+            :class="s.lifted_at ? 'border-sage/20 bg-sage/5' : 'border-rust/20 bg-rust/5'"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-ink-dark">{{ s.reason }}</span>
+                <span
+                  v-if="!s.lifted_at"
+                  class="inline-flex items-center rounded-full bg-rust/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rust"
+                >
+                  Active
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center rounded-full bg-sage/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sage"
+                >
+                  Levée
+                </span>
+              </div>
+              <span class="text-xs text-ink-dark/50">{{ formatDateTime(s.started_at) }}</span>
+            </div>
+            <p v-if="s.description" class="mt-1.5 text-xs text-ink-dark/60">{{ s.description }}</p>
+            <div v-if="s.ends_at" class="mt-1 text-xs text-ink-dark/45">
+              Fin prévue : {{ formatDate(s.ends_at) }}
+            </div>
+            <div v-if="s.lifted_at" class="mt-2 border-t border-sage/15 pt-2 text-xs text-ink-dark/50">
+              Levée le {{ formatDateTime(s.lifted_at) }}
+              <span v-if="s.lifted_reason" class="italic">— {{ s.lifted_reason }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- MODAL: SANCTION -->
