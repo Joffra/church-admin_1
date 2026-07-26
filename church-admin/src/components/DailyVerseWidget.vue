@@ -25,6 +25,7 @@ const themes = [
 // ---- localStorage helpers ----
 const STORAGE_KEY = 'meceiph_daily_verse'
 const CHANGE_COUNT_KEY = 'meceiph_daily_verse_changes'
+const SHOWN_KEY = 'meceiph_daily_verse_shown'
 
 function getTodayKey() {
   return new Date().toLocaleDateString('en-CA')
@@ -50,6 +51,34 @@ function saveVerse(verseData) {
     ...verseData,
     date: getTodayKey(),
   }))
+}
+
+// Track all verse references shown today (to avoid repeats)
+function getShownReferences() {
+  try {
+    const raw = localStorage.getItem(SHOWN_KEY)
+    if (!raw) return []
+    const data = JSON.parse(raw)
+    if (data.date !== getTodayKey()) {
+      localStorage.removeItem(SHOWN_KEY)
+      return []
+    }
+    return data.references || []
+  } catch {
+    return []
+  }
+}
+
+function addShownReference(reference) {
+  if (!reference) return
+  const refs = getShownReferences()
+  if (!refs.includes(reference)) {
+    refs.push(reference)
+    localStorage.setItem(SHOWN_KEY, JSON.stringify({
+      date: getTodayKey(),
+      references: refs,
+    }))
+  }
 }
 
 function getChangeCountToday() {
@@ -81,16 +110,24 @@ const remainingChanges = computed(() => MAX_CHANGES_PER_DAY - getChangeCountToda
 async function fetchVerse(mood, topics) {
   loading.value = true
   error.value = ''
+  // Clear current verse immediately so the user sees it's loading a new one
+  verse.value = null
+
   try {
     const payload = {}
     if (mood) payload.mood = mood
     if (topics && topics.length) payload.topics = topics
+
+    // Send previously shown references so the backend can avoid repeating
+    const excludeRefs = getShownReferences()
+    if (excludeRefs.length) payload.exclude_references = excludeRefs
 
     const { data } = await DailyVerseAPI.getVerse(payload)
     const verseData = data.data ?? data
 
     verse.value = verseData
     saveVerse(verseData)
+    addShownReference(verseData.reference)
     return verseData
   } catch (e) {
     error.value = "Une erreur s'est produite. Veuillez réessayer."
@@ -136,6 +173,8 @@ onMounted(() => {
   const stored = getStoredVerse()
   if (stored) {
     verse.value = stored
+    // Make sure the stored reference is in the "shown" list
+    addShownReference(stored.reference)
   } else {
     openMoodModal()
   }
@@ -293,7 +332,7 @@ onMounted(() => {
                 class="rounded-full px-3.5 py-1.5 text-xs font-medium transition"
                 :class="selectedTheme === theme
                   ? 'bg-gold text-ink-dark shadow-sm'
-                  : 'bg-ink/5 text-ink-dark/60 hover:bg-ink/10'"
+                  : 'border border-rule bg-white text-ink-dark/70 hover:border-gold hover:text-ink-dark'"
               >
                 {{ theme }}
               </button>
@@ -301,23 +340,19 @@ onMounted(() => {
           </div>
 
           <!-- Actions -->
-          <div class="flex flex-col gap-2 border-t border-rule pt-5 sm:flex-row sm:justify-between">
+          <div class="flex gap-3 pt-2">
             <button
               @click="skipMood"
               :disabled="loading"
-              class="order-2 sm:order-1 rounded-lg px-5 py-2.5 text-sm font-medium text-ink-dark/50 hover:text-ink-dark transition disabled:opacity-50"
+              class="flex-1 rounded-lg border border-rule bg-white px-4 py-2.5 text-sm font-medium text-ink-dark/60 transition hover:border-ink-dark/30 hover:text-ink-dark disabled:opacity-50"
             >
               Passer
             </button>
             <button
               @click="submitMood"
               :disabled="loading"
-              class="order-1 sm:order-2 rounded-lg bg-gold px-6 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              class="flex-1 rounded-lg bg-gold px-4 py-2.5 text-sm font-semibold text-ink-dark transition hover:bg-gold-light disabled:opacity-50"
             >
-              <svg v-if="loading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
               {{ loading ? 'Génération…' : 'Obtenir mon verset' }}
             </button>
           </div>
@@ -330,21 +365,21 @@ onMounted(() => {
 <style scoped>
 .verse-fade-enter-active,
 .verse-fade-leave-active {
-  transition: all 0.25s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .verse-fade-enter-from,
 .verse-fade-leave-to {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(8px);
 }
 
 .verse-expand-enter-active,
 .verse-expand-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 .verse-expand-enter-from,
 .verse-expand-leave-to {
   opacity: 0;
-  transform: translateY(10px) scale(0.95);
+  transform: scale(0.95) translateY(8px);
 }
 </style>
