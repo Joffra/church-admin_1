@@ -75,27 +75,32 @@ router.beforeEach((to, from) => {
     return { name: 'dashboard' }
   }
 
-  // 4. Requires mission_admin (church manager)
+  // 4. Force password change — block all pages except password change & profile
+  if (auth.mustChangePassword && to.name !== 'password-change') {
+    return { name: 'password-change' }
+  }
+
+  // 5. Requires mission_admin (church manager)
   if (to.meta.requiresChurchManager && !auth.canManageChurches) {
     return { name: 'dashboard' }
   }
 
-  // 5. Requires admin (both mission_admin and church_admin)
+  // 6. Requires admin (both mission_admin and church_admin)
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { name: 'dashboard' }
   }
 
-  // 6. Requires at least admin to view member list
+  // 7. Requires at least admin to view member list
   if (to.meta.requiresMemberViewer && !auth.canViewMembers) {
     return { name: 'dashboard' }
   }
 
-  // 7. Create/edit member: church_admin ONLY
+  // 8. Create/edit member: church_admin ONLY
   if (to.meta.requiresChurchAdmin && !auth.canCreateMembers) {
     return { name: 'members' }
   }
 
-  // 8. Member detail page: admins only
+  // 9. Member detail page: admins only
   if (to.meta.requiresMemberShow) {
     if (auth.isAdmin) return true
     return { name: 'profile' }

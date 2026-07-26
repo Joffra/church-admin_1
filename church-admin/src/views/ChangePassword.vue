@@ -1,9 +1,13 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { AuthAPI } from '../services/api'
 
 const auth = useAuthStore()
+const router = useRouter()
+
+const isForced = computed(() => auth.mustChangePassword)
 
 const form = ref({
   current_password: '',
@@ -36,6 +40,16 @@ async function onSubmit() {
       current_password: '',
       new_password: '',
       new_password_confirmation: '',
+    }
+
+    // Clear the forced-change flag in the store
+    auth.passwordChanged()
+
+    // If this was a forced change, redirect to dashboard after a short delay
+    if (isForced.value) {
+      setTimeout(() => {
+        router.push({ name: 'dashboard' })
+      }, 1200)
     }
   } catch (e) {
     if (e.response?.status === 422 && e.response.data?.errors) {
@@ -77,6 +91,22 @@ function passwordStrength(pw) {
       <p class="mt-2 text-sm text-ink-dark/50">
         Choisissez un mot de passe robuste pour protéger votre compte.
       </p>
+    </div>
+
+    <!-- Forced change banner -->
+    <div
+      v-if="isForced"
+      class="mb-5 flex items-start gap-3 rounded-md border border-gold/40 bg-gold/10 px-4 py-3 text-sm"
+    >
+      <svg class="h-5 w-5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div>
+        <p class="font-medium text-ink-dark">Modification obligatoire du mot de passe</p>
+        <p class="mt-0.5 text-xs text-ink-dark/60">
+          Pour des raisons de sécurité, vous devez changer votre mot de passe avant de pouvoir accéder au reste de l'application.
+        </p>
+      </div>
     </div>
 
     <!-- Success banner -->

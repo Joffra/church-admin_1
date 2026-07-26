@@ -17,6 +17,11 @@ async function onSubmit() {
   submitted.value = true
   const ok = await auth.login(member_code.value.trim(), password.value)
   if (ok) {
+    // If user must change password, redirect there first
+    if (auth.mustChangePassword) {
+      router.push({ name: 'password-change' })
+      return
+    }
     const redirect = route.query.redirect || '/admin'
     router.push(redirect)
   }
