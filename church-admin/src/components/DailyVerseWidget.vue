@@ -107,6 +107,12 @@ function incrementChangeCount() {
 const remainingChanges = computed(() => MAX_CHANGES_PER_DAY - getChangeCountToday())
 
 // ---- API ----
+// The backend embeds mood + topics into the system prompt (not a user message).
+// This means the same theme produces an identical prompt → same verse every time.
+//
+// Frontend-only workaround: we append the exclusion list and a random nonce
+// INTO the mood field. This makes the system prompt different each request
+// AND instructs the AI to avoid previously shown verses.
 async function fetchVerse(mood, topics) {
   loading.value = true
   error.value = ''
@@ -114,13 +120,29 @@ async function fetchVerse(mood, topics) {
   verse.value = null
 
   try {
-    const payload = {}
-    if (mood) payload.mood = mood
-    if (topics && topics.length) payload.topics = topics
-
-    // Send previously shown references so the backend can avoid repeating
+    // Build the effective mood: user's mood + exclusion instructions + nonce
     const excludeRefs = getShownReferences()
-    if (excludeRefs.length) payload.exclude_references = excludeRefs
+    const nonce = Date.now()
+
+    let effectiveMood = mood || ''
+
+    // Append exclusion list so the AI avoids repeats
+    if (excludeRefs.length > 0) {
+      const excludeStr = excludeRefs.join(', ')
+      const excludeLine = `IMPORTANT: Ne propose PAS ces versets déjà proposés: ${excludeStr}. Choisis un verset DIFFÉREENT.`
+      effectiveMood = effectiveMood
+        ? `${effectiveMood}. ${excludeLine}`
+        : excludeLine
+    }
+
+    // Append a nonce to guarantee the prompt is never byte-for-byte identical
+    // (the backend embeds this in the system prompt, so variation here = variation in output)
+    effectiveMood = effectiveMood
+      ? `${effectiveMood} [${nonce}]`
+      : `Sélection variée ${nonce}`
+
+    const payload = { mood: effectiveMood }
+    if (topics && topics.length) payload.topics = topics
 
     const { data } = await DailyVerseAPI.getVerse(payload)
     const verseData = data.data ?? data
