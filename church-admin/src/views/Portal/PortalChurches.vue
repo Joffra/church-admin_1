@@ -8,6 +8,9 @@ const error = ref('')
 const search = ref('')
 
 function unwrap(payload) {
+  // Laravel ResourceCollection (paginated): { data: [...], links, meta }
+  // Laravel ResourceCollection (plain):    { data: [...] }
+  // Plain array fallback
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.data)) return payload.data
   return []
@@ -33,7 +36,17 @@ onMounted(async () => {
     const res = await PortalAPI.getChurches()
     churches.value = unwrap(res.data)
   } catch (e) {
-    error.value = e.response?.data?.message || "Impossible de charger la liste des églises."
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    if (status === 404) {
+      error.value = "Aucune église trouvée."
+    } else if (status === 500) {
+      error.value = "Erreur serveur. Veuillez réessayer plus tard."
+    } else if (msg) {
+      error.value = msg
+    } else {
+      error.value = "Impossible de charger la liste des églises."
+    }
   } finally {
     loading.value = false
   }

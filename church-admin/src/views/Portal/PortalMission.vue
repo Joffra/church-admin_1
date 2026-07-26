@@ -40,9 +40,20 @@ const statusLabel = computed(() => {
 onMounted(async () => {
   try {
     const res = await PortalAPI.getMission()
-    mission.value = res.data
+    // Laravel JsonResource wraps in {data: {...}} — unwrap one level
+    mission.value = res.data?.data ?? res.data
   } catch (e) {
-    error.value = e.response?.data?.message || "Impossible de charger les informations de la mission."
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    if (status === 404) {
+      error.value = "Les informations de la mission ne sont pas encore disponibles."
+    } else if (status === 500) {
+      error.value = "Erreur serveur. Veuillez réessayer plus tard."
+    } else if (msg) {
+      error.value = msg
+    } else {
+      error.value = "Impossible de charger les informations de la mission."
+    }
   } finally {
     loading.value = false
   }
