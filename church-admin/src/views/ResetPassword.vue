@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { AuthAPI } from '../services/api'
@@ -14,6 +14,7 @@ const step = ref(1)
 const email = ref('')
 const code = ref('')
 const loading = ref(false)
+const resending = ref(false)
 
 // Two separate success states: one for email sent, one for code verified
 const emailSentMsg = ref('')   // shown ON step 2 form (green banner above the code input)
@@ -21,6 +22,46 @@ const verifiedMsg = ref('')    // shown after successful code verification (fina
 
 const error = ref('')
 const fieldErrors = ref({})
+
+// ---- Countdown for resend button ----
+const COUNTDOWN_SECONDS = 60
+const countdown = ref(0)
+let countdownInterval = null
+
+function startCountdown() {
+  countdown.value = COUNTDOWN_SECONDS
+  if (countdownInterval) clearInterval(countdownInterval)
+  countdownInterval = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(countdownInterval)
+      countdownInterval = null
+    }
+  }, 1000)
+}
+
+function stopCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
+  countdown.value = 0
+}
+
+// Start countdown when entering step 2
+watch(step, (newStep) => {
+  if (newStep === 2) {
+    startCountdown()
+  } else {
+    stopCountdown()
+  }
+})
+
+onUnmounted(() => {
+  stopCountdown()
+})
+
+const canResend = computed(() => countdown.value === 0 && !resending.value && !loading.value && !verifiedMsg.value)
 
 const stepTitle = computed(() =>
   step.value === 1 ? 'Réinitialiser mon mot de passe' : 'Vérification du code'
@@ -57,6 +98,30 @@ async function onSendCode() {
   }
 }
 
+async function onResendCode() {
+  if (!canResend.value) return
+
+  resending.value = true
+  error.value = ''
+  emailSentMsg.value = ''
+  fieldErrors.value = {}
+
+  try {
+    const { data } = await AuthAPI.sendResetCode(email.value)
+    emailSentMsg.value = data.message || 'Un nouveau code de vérification a été envoyé à votre adresse email.'
+    code.value = ''
+    startCountdown()
+  } catch (e) {
+    if (e.response?.data?.message) {
+      error.value = e.response.data.message
+    } else {
+      error.value = "Impossible de renvoyer le code. Vérifiez votre connexion."
+    }
+  } finally {
+    resending.value = false
+  }
+}
+
 async function onVerifyCode() {
   loading.value = true
   error.value = ''
@@ -66,6 +131,7 @@ async function onVerifyCode() {
     const { data } = await AuthAPI.verifyResetCode(email.value, code.value)
     // Code verified — show final success and redirect to login
     verifiedMsg.value = data.message || 'Votre mot de passe a été réinitialisé. Un mot de passe temporaire vous a été envoyé par email.'
+    stopCountdown()
     setTimeout(() => {
       auth.logout()
       router.push({ name: 'login' })
@@ -206,6 +272,31 @@ function backToStep1() {
               </svg>
               {{ loading ? 'Vérification…' : 'Vérifier le code' }}
             </button>
+
+            <!-- Resend code with countdown -->
+            <div class="flex items-center justify-center gap-2 pt-1">
+              <button
+                type="button"
+                @click="onResendCode"
+                :disabled="!canResend"
+                class="text-xs transition"
+                :class="canResend ? 'text-gold hover:text-gold-light' : 'text-parchment/30 cursor-not-allowed'"
+              >
+                <span v-if="resending" class="flex items-center gap-1.5">
+                  <svg class="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Envoi…
+                </span>
+                <span v-else-if="countdown > 0">
+                  Renvoyer le code dans {{ countdown }}s
+                </span>
+                <span v-else>
+                  Renvoyer le code
+                </span>
+              </button>
+            </div>
 
             <button
               type="button"

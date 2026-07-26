@@ -228,7 +228,7 @@ function formatDate(dateStr) {
 function formatDateTime(dateTimeStr) {
   if (!dateTimeStr) return '—'
   try {
-    return new Date(dateTimeStr).toLocaleDateString('fr-FR', {
+    return new Date(dateTimeStr).toLocaleString('fr-FR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

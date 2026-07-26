@@ -54,6 +54,17 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('fr-FR')
 }
 
+function formatDateTime(d) {
+  if (!d) return '—'
+  return new Date(d).toLocaleString('fr-FR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 // ---- Status Badges ----
 function getSanctionBadge(sanction) {
   if (sanction.lifted_at) {
@@ -298,7 +309,7 @@ onMounted(loadSanctions)
 
             <!-- Début -->
             <td class="px-5 py-3.5 text-ink-dark/60">
-              {{ formatDate(sanction.started_at) }}
+              {{ formatDateTime(sanction.started_at) }}
             </td>
 
             <!-- Fin -->
