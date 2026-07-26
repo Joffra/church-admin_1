@@ -21,6 +21,17 @@ function fullName(member) {
   return `${member.first_name || ''} ${member.last_name || ''}`.trim()
 }
 
+// Build image URL from backend storage path
+function churchImgUrl(path) {
+  if (!path) return null
+  if (path.startsWith('http')) return path
+  const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+  const origin = apiBase.replace('/api', '')
+  if (path.startsWith('/storage/')) return `${origin}${path}`
+  if (path.startsWith('/')) return `${origin}${path}`
+  return `${origin}/storage/${path}`
+}
+
 const filtered = computed(() => {
   if (!search.value) return churches.value
   const q = search.value.toLowerCase()
@@ -31,26 +42,37 @@ const filtered = computed(() => {
   )
 })
 
-onMounted(async () => {
+async function loadChurches() {
+  loading.value = true
+  error.value = ''
   try {
     const res = await PortalAPI.getChurches()
     churches.value = unwrap(res.data)
   } catch (e) {
+    console.error('[PortalChurches] Failed to load churches:', {
+      status: e.response?.status,
+      url: e.config?.url,
+      data: e.response?.data,
+      message: e.message,
+    })
     const status = e.response?.status
-    const msg = e.response?.data?.message
     if (status === 404) {
       error.value = "Aucune église trouvée."
     } else if (status === 500) {
       error.value = "Erreur serveur. Veuillez réessayer plus tard."
-    } else if (msg) {
-      error.value = msg
+    } else if (e.response?.data?.message) {
+      error.value = e.response.data.message
+    } else if (!e.response) {
+      error.value = "Impossible de contacter le serveur. Vérifiez votre connexion."
     } else {
       error.value = "Impossible de charger la liste des églises."
     }
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadChurches)
 </script>
 
 <template>
@@ -87,6 +109,12 @@ onMounted(async () => {
     <!-- Error -->
     <div v-else-if="error" class="mt-8 rounded-lg border border-rust/30 bg-rust/5 p-6 text-center">
       <p class="text-rust">{{ error }}</p>
+      <button
+        @click="loadChurches"
+        class="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-parchment transition hover:bg-ink/80"
+      >
+        Réessayer
+      </button>
     </div>
 
     <!-- Empty -->
@@ -105,7 +133,7 @@ onMounted(async () => {
         <div class="aspect-video overflow-hidden bg-ink/5">
           <img
             v-if="church.church_image"
-            :src="church.church_image"
+            :src="churchImgUrl(church.church_image)"
             :alt="church.name"
             class="h-full w-full object-cover transition group-hover:scale-105"
           />

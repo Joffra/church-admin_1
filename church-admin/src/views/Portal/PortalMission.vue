@@ -25,10 +25,18 @@ function formatDate(dateStr) {
   })
 }
 
+// Build a full image URL from a backend storage path.
+// Handles: full URLs (http://...), Storage::url() paths (/storage/...),
+// and raw paths (churches/image.jpg).
 function profileImgUrl(path) {
   if (!path) return null
   if (path.startsWith('http')) return path
-  return `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}/storage/${path}`
+  // If it's already a /storage/ path, prepend the backend origin
+  const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+  const origin = apiBase.replace('/api', '')
+  if (path.startsWith('/storage/')) return `${origin}${path}`
+  if (path.startsWith('/')) return `${origin}${path}`
+  return `${origin}/storage/${path}`
 }
 
 const statusLabel = computed(() => {
@@ -37,27 +45,42 @@ const statusLabel = computed(() => {
   return { label: s || '—', class: 'bg-ink/10 text-ink-dark/60' }
 })
 
-onMounted(async () => {
+async function loadMission() {
+  loading.value = true
+  error.value = ''
   try {
     const res = await PortalAPI.getMission()
-    // Laravel JsonResource wraps in {data: {...}} — unwrap one level
-    mission.value = res.data?.data ?? res.data
+    // Laravel JsonResource wraps single resources in {data: {...}}
+    const payload = res.data?.data ?? res.data
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Unexpected response format')
+    }
+    mission.value = payload
   } catch (e) {
+    console.error('[PortalMission] Failed to load mission:', {
+      status: e.response?.status,
+      url: e.config?.url,
+      data: e.response?.data,
+      message: e.message,
+    })
     const status = e.response?.status
-    const msg = e.response?.data?.message
     if (status === 404) {
       error.value = "Les informations de la mission ne sont pas encore disponibles."
     } else if (status === 500) {
       error.value = "Erreur serveur. Veuillez réessayer plus tard."
-    } else if (msg) {
-      error.value = msg
+    } else if (e.response?.data?.message) {
+      error.value = e.response.data.message
+    } else if (!e.response) {
+      error.value = "Impossible de contacter le serveur. Vérifiez votre connexion."
     } else {
       error.value = "Impossible de charger les informations de la mission."
     }
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadMission)
 </script>
 
 <template>
@@ -77,6 +100,12 @@ onMounted(async () => {
     <!-- Error -->
     <div v-else-if="error" class="mt-12 rounded-lg border border-rust/30 bg-rust/5 p-6 text-center">
       <p class="text-rust">{{ error }}</p>
+      <button
+        @click="loadMission"
+        class="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-parchment transition hover:bg-ink/80"
+      >
+        Réessayer
+      </button>
     </div>
 
     <!-- ===== Mission content ===== -->
@@ -207,6 +236,7 @@ onMounted(async () => {
                 <p v-if="mission.mission_admin.ecclesiastical_title" class="text-sm text-ink-dark/50">{{ mission.mission_admin.ecclesiastical_title }}</p>
               </div>
             </div>
+            <!-- Admin details -->
             <div class="mt-4 space-y-1.5 border-t border-rule pt-3 text-sm">
               <p v-if="mission.mission_admin.email" class="flex items-center gap-2 text-ink-dark/60">
                 <svg class="h-3.5 w-3.5 text-ink-dark/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H4zM4 16l4-4 4 4 4-4 4 4M4 20l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -225,30 +255,29 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- ===== Comité de la mission ===== -->
+      <!-- ===== Comité central ===== -->
       <section v-if="mission.mission_committee?.members?.length">
-        <h2 class="font-display text-2xl text-ink-dark">Comité de la Mission</h2>
+        <h2 class="font-display text-2xl text-ink-dark">Comité Central</h2>
         <p class="mt-1 text-sm text-ink-dark/50">{{ mission.mission_committee.name }}</p>
 
         <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div
             v-for="member in mission.mission_committee.members"
             :key="member.id"
-            class="flex items-start gap-3 rounded-xl border border-ink/10 bg-white p-4 shadow-sm transition hover:border-gold/30 hover:shadow-md"
+            class="rounded-xl border border-ink/10 bg-white p-5 shadow-sm transition hover:shadow-md"
           >
-            <div class="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-ink/5">
-              <img v-if="member.profile_picture" :src="profileImgUrl(member.profile_picture)" :alt="fullName(member)" class="h-full w-full object-cover" />
-              <div v-else class="flex h-full w-full items-center justify-center font-display text-base text-ink-dark/50">
-                {{ initials(member) }}
+            <div class="flex items-center gap-3">
+              <div class="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-ink/5">
+                <img v-if="member.profile_picture" :src="profileImgUrl(member.profile_picture)" :alt="fullName(member)" class="h-full w-full object-cover" />
+                <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">
+                  {{ initials(member) }}
+                </div>
               </div>
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-ink-dark text-sm">{{ fullName(member) }}</p>
-              <p class="text-xs text-gold font-medium">{{ member.assignment?.title?.name || '—' }}</p>
-              <p v-if="member.ecclesiastical_title" class="text-xs text-ink-dark/40">{{ member.ecclesiastical_title }}</p>
-              <p v-if="member.assignment?.assigned_at" class="mt-0.5 text-[10px] text-ink-dark/30">
-                Depuis {{ formatDate(member.assignment.assigned_at) }}
-              </p>
+              <div class="min-w-0">
+                <p class="font-medium text-ink-dark text-sm">{{ fullName(member) }}</p>
+                <p v-if="member.assignment?.title?.name" class="text-xs text-gold">{{ member.assignment.title.name }}</p>
+                <p v-if="member.ecclesiastical_title" class="text-xs text-ink-dark/40">{{ member.ecclesiastical_title }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -268,34 +297,33 @@ onMounted(async () => {
             <p class="font-display text-lg text-parchment/80">{{ mission.central_church.name }}</p>
           </div>
 
-          <div class="p-6">
-            <div class="grid gap-5 sm:grid-cols-3">
-              <!-- Address -->
-              <div>
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-ink-dark/40">Adresse</p>
-                <p class="mt-1 text-sm text-ink-dark/70">{{ mission.central_church.address || '—' }}</p>
-              </div>
-              <!-- Contact -->
-              <div>
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-ink-dark/40">Contact</p>
-                <p v-if="mission.central_church.phone" class="mt-1 text-sm text-ink-dark/70">📞 {{ mission.central_church.phone }}</p>
-                <p v-if="mission.central_church.email" class="mt-0.5 text-sm text-ink-dark/70">✉ {{ mission.central_church.email }}</p>
-                <p v-if="!mission.central_church.phone && !mission.central_church.email" class="mt-1 text-sm text-ink-dark/40">—</p>
-              </div>
-              <!-- Status -->
-              <div>
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-ink-dark/40">Statut</p>
-                <p class="mt-1">
-                  <span class="inline-flex rounded-full bg-sage/15 px-2.5 py-0.5 text-xs font-medium text-sage">
+          <div class="grid gap-6 p-6 sm:grid-cols-2">
+            <!-- Left: info -->
+            <div>
+              <p class="font-display text-lg text-ink-dark">{{ mission.central_church.name }}</p>
+              <div class="mt-3 space-y-1.5 text-sm">
+                <p class="text-ink-dark/70">{{ mission.central_church.address || '—' }}</p>
+                <div class="flex gap-4">
+                  <p v-if="mission.central_church.phone" class="mt-1 text-sm text-ink-dark/70">📞 {{ mission.central_church.phone }}</p>
+                  <p v-if="mission.central_church.email" class="mt-0.5 text-sm text-ink-dark/70">✉ {{ mission.central_church.email }}</p>
+                  <p v-if="!mission.central_church.phone && !mission.central_church.email" class="mt-1 text-sm text-ink-dark/40">—</p>
+                </div>
+                <div class="mt-2">
+                  <span
+                    class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
+                    :class="mission.central_church.status === 'active' || mission.central_church.status === 'actif'
+                      ? 'bg-sage/15 text-sage' : 'bg-ink/10 text-ink-dark/60'"
+                  >
                     {{ mission.central_church.status === 'active' ? 'Active' : mission.central_church.status }}
                   </span>
-                </p>
+                </div>
               </div>
             </div>
 
-            <!-- Pastor & Admin -->
-            <div class="mt-5 grid gap-4 border-t border-rule pt-5 sm:grid-cols-2">
-              <div v-if="mission.central_church.pastor" class="flex items-center gap-3">
+            <!-- Right: pastor & admin -->
+            <div class="mt-5 grid gap-4 border-t border-rule pt-5 sm:mt-0 sm:border-t-0 sm:border-l sm:pl-6">
+              <!-- Pastor -->
+              <div v-if="mission.central_church.pastor?.id" class="flex items-center gap-3">
                 <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink/5">
                   <img v-if="mission.central_church.pastor.profile_picture" :src="profileImgUrl(mission.central_church.pastor.profile_picture)" :alt="fullName(mission.central_church.pastor)" class="h-full w-full object-cover" />
                   <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">{{ initials(mission.central_church.pastor) }}</div>
@@ -306,7 +334,8 @@ onMounted(async () => {
                   <p v-if="mission.central_church.pastor.ecclesiastical_title" class="text-xs text-ink-dark/40">{{ mission.central_church.pastor.ecclesiastical_title }}</p>
                 </div>
               </div>
-              <div v-if="mission.central_church.admin" class="flex items-center gap-3">
+              <!-- Admin -->
+              <div v-if="mission.central_church.admin?.id" class="flex items-center gap-3">
                 <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink/5">
                   <img v-if="mission.central_church.admin.profile_picture" :src="profileImgUrl(mission.central_church.admin.profile_picture)" :alt="fullName(mission.central_church.admin)" class="h-full w-full object-cover" />
                   <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">{{ initials(mission.central_church.admin) }}</div>
