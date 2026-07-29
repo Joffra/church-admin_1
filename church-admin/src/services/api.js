@@ -55,7 +55,7 @@ export const ChurchesAPI = {
   updateForm: (id, formData) => api.post(`/churches/${id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  remove: (id) => api.delete(`/churches/${id}`),
+  remove: (id, data) => api.delete(`/churches/${id}`, { data }),
 }
 
 // ---- Members ----
@@ -92,10 +92,13 @@ export const SanctionsAPI = {
   list: (params) => api.get('/sanctions', { params }),
 }
 
-// ---- Ecclesiastical Titles (for member creation) ----
+// ---- Ecclesiastical Titles ----
 
 export const EcclesiasticalTitlesAPI = {
   list: () => api.get('/ecclesiastical-titles'),
+  create: (data) => api.post('/ecclesiastical-titles', data),
+  update: (id, data) => api.put(`/ecclesiastical-titles/${id}`, data),
+  remove: (id) => api.delete(`/ecclesiastical-titles/${id}`),
 }
 
 // ---- Titles (committee titles, for committee management) ----
@@ -114,38 +117,29 @@ export const PermissionsAPI = {
 // ---- Committees ----
 
 export const CommitteesAPI = {
-  list: () => api.get('/committees'),
+  list: (params) => api.get('/committees', { params }),
   get: (id) => api.get(`/committees/${id}`),
   showByStructure: (structureId) => api.get(`/structures/${structureId}/committee`),
   update: (id, data) => api.put(`/committees/${id}`, data),
   addMember: (id, data) => api.post(`/committees/${id}/members`, data),
-  removeMember: (id, memberId) => api.delete(`/committees/${id}/members`, { data: { member_id: memberId } }),
+  // Backend requires BOTH member_id AND title_id for removal
+  removeMember: (id, data) => api.delete(`/committees/${id}/members`, { data }),
   availableTitles: (committeeId) => api.get(`/committees/${committeeId}/available-titles`),
 }
-// ---- Missions (Itération 2) ----
 
-export const MissionsAPI = {
-  get: () => api.get('/missions'),
-}
-
-// ---- Contact (Itération 2) ----
-
-export const ContactAPI = {
-  send: (data) => api.post('/contact', data),
-}
-
-// ---- Daily Verse (Itération 2) ----
+// ---- Daily Verse ----
 // Public endpoint — no auth required
 
 export const DailyVerseAPI = {
   getVerse: (data) => api.post('/daily-verse', data),
 }
 
-// ---- AI Assistant (Itération 2) ----
+// ---- AI Chatbot ----
 // Public endpoint — no auth required, rate-limited server-side
+// Backend expects: { message: string, history: [{role, content}] }
 
 export const AiAssistantAPI = {
-  chat: (messages) => api.post('/ai-assistant', { messages }),
+  chat: (message, history = []) => api.post('/chat', { message, history }),
 }
 
 // ---- Portal (public, no auth) ----

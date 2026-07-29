@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChurchesAPI, MembersAPI } from '../../services/api'
+import { ChurchesAPI, MembersAPI, EcclesiasticalTitlesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import MapPicker from '../../components/MapPicker.vue'
 
@@ -17,11 +17,17 @@ const fieldErrors = ref({})
 const imagePreview = ref(null)
 const imageFile = ref(null)
 
-// Pastors and members for personnel selection (create mode only)
+// Pastors and members for personnel selections (create mode only)
 const pastors = ref([])
 const members = ref([])
+const titles = ref([])
 const loadingPastors = ref(false)
 const loadingMembers = ref(false)
+const loadingTitles = ref(false)
+
+// Mode toggles for create mode
+const pastorMode = ref('existing') // 'existing' | 'new'
+const adminMode = ref('existing')   // 'existing' | 'new' | 'pastor'
 
 const form = ref({
   // Church fields
@@ -32,9 +38,25 @@ const form = ref({
   gps_coordinates: '',
   // Pastor (select existing)
   pastor_member_id: '',
+  // New pastor fields
+  new_pastor_first_name: '',
+  new_pastor_last_name: '',
+  new_pastor_gender: '',
+  new_pastor_email: '',
+  new_pastor_birth_date: '',
+  new_pastor_baptized: false,
+  new_pastor_ecclesiastical_title_id: '',
   // Admin
   pastor_is_admin: false,
   admin_member_id: '',
+  // New admin fields
+  new_admin_first_name: '',
+  new_admin_last_name: '',
+  new_admin_gender: '',
+  new_admin_email: '',
+  new_admin_birth_date: '',
+  new_admin_baptized: false,
+  new_admin_ecclesiastical_title_id: '',
 })
 
 function onImageChange(e) {
@@ -65,6 +87,18 @@ async function loadMembers() {
     // silent
   } finally {
     loadingMembers.value = false
+  }
+}
+
+async function loadTitles() {
+  loadingTitles.value = true
+  try {
+    const { data } = await EcclesiasticalTitlesAPI.list()
+    titles.value = Array.isArray(data) ? data : (data.data ?? [])
+  } catch {
+    // silent
+  } finally {
+    loadingTitles.value = false
   }
 }
 
@@ -108,26 +142,38 @@ async function onSubmit() {
 
   // Personnel fields — only on create
   if (!isEdit.value) {
-    // Pastor: always required (select from existing pastors)
-    if (form.value.pastor_member_id) {
+    // ---- Pastor ----
+    if (pastorMode.value === 'existing' && form.value.pastor_member_id) {
       payload.append('pastor_member_id', form.value.pastor_member_id)
-      // Backend StoreChurchRequest has new_pastor_birth_date and new_pastor_baptized
-      // as 'required' (not required_without). Send placeholder values so
-      // validation passes when selecting an existing pastor.
-      // The ChurchCreationService ignores these when pastor_member_id is present.
+      // Backend requires these as 'required' (not required_without) — send placeholders
       payload.append('new_pastor_birth_date', '2000-01-01')
       payload.append('new_pastor_baptized', '1')
+      payload.append('new_pastor_ecclesiastical_title_id', form.value.new_pastor_ecclesiastical_title_id || titles.value[0]?.id || '1')
+    } else if (pastorMode.value === 'new') {
+      payload.append('new_pastor_first_name', form.value.new_pastor_first_name)
+      payload.append('new_pastor_last_name', form.value.new_pastor_last_name)
+      payload.append('new_pastor_gender', form.value.new_pastor_gender)
+      payload.append('new_pastor_email', form.value.new_pastor_email)
+      payload.append('new_pastor_birth_date', form.value.new_pastor_birth_date)
+      payload.append('new_pastor_baptized', form.value.new_pastor_baptized ? '1' : '0')
+      payload.append('new_pastor_ecclesiastical_title_id', form.value.new_pastor_ecclesiastical_title_id)
     }
 
-    // Admin
-    if (form.value.pastor_is_admin) {
+    // ---- Admin ----
+    if (form.value.pastor_is_admin || adminMode.value === 'pastor') {
       payload.append('pastor_is_admin', '1')
-      // Backend uses 'pastor_id_admin' in required_without_all for admin fields.
-      // Send both field names so the validation passes regardless of which
-      // one the backend checks.
-      payload.append('pastor_id_admin', '1')
-    } else if (form.value.admin_member_id) {
+    } else if (adminMode.value === 'existing' && form.value.admin_member_id) {
       payload.append('admin_member_id', form.value.admin_member_id)
+      // Backend requires new_admin_ecclesiastical_title_id as 'required' — send placeholder
+      payload.append('new_admin_ecclesiastical_title_id', form.value.new_admin_ecclesiastical_title_id || titles.value[0]?.id || '1')
+    } else if (adminMode.value === 'new') {
+      payload.append('new_admin_first_name', form.value.new_admin_first_name)
+      payload.append('new_admin_last_name', form.value.new_admin_last_name)
+      payload.append('new_admin_gender', form.value.new_admin_gender)
+      payload.append('new_admin_email', form.value.new_admin_email)
+      payload.append('new_admin_birth_date', form.value.new_admin_birth_date)
+      payload.append('new_admin_baptized', form.value.new_admin_baptized ? '1' : '0')
+      payload.append('new_admin_ecclesiastical_title_id', form.value.new_admin_ecclesiastical_title_id)
     }
   }
 
@@ -160,9 +206,9 @@ onMounted(() => {
   if (isEdit.value) {
     loadChurch()
   } else {
-    // Load pastors and members for personnel selection on create
     loadPastors()
     loadMembers()
+    loadTitles()
   }
 })
 </script>
@@ -284,37 +330,121 @@ onMounted(() => {
         <p v-if="fieldErrors.church_image" class="mt-1 text-xs text-rust">{{ fieldErrors.church_image[0] }}</p>
       </div>
 
-      <!-- Pastor & Admin selection — only on create -->
-      <div v-if="!isEdit && auth.canManageChurches" class="space-y-4 border-t border-rule pt-5">
+      <!-- ===== Pastor & Admin selection — only on create ===== -->
+      <div v-if="!isEdit && auth.canManageChurches" class="space-y-5 border-t border-rule pt-5">
         <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-dark/45">Personnel</h2>
 
-        <!-- Pastor -->
+        <!-- Pastor: Mode toggle -->
         <div>
-          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-            Pasteur responsable *
-          </label>
-          <div v-if="loadingPastors" class="py-3 text-sm text-ink-dark/40">Chargement des pasteurs…</div>
-          <select
-            v-else
-            v-model="form.pastor_member_id"
-            required
-            :disabled="saving"
-            class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-          >
-            <option value="" disabled>Sélectionner un pasteur…</option>
-            <option v-for="p in pastors" :key="p.id" :value="p.id">
-              {{ p.first_name }} {{ p.last_name }} — {{ p.member_code }}
-            </option>
-          </select>
-          <p v-if="fieldErrors.pastor_member_id" class="mt-1 text-xs text-rust">{{ fieldErrors.pastor_member_id[0] }}</p>
-          <p v-if="!pastors.length && !loadingPastors" class="mt-1 text-xs text-ink-dark/40">
-            Aucun pasteur disponible. Veuillez d'abord enregistrer un membre avec le titre « Pasteur ».
-          </p>
+          <div class="mb-3 flex gap-2">
+            <button
+              type="button"
+              @click="pastorMode = 'existing'"
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+              :class="pastorMode === 'existing' ? 'bg-gold text-ink-dark' : 'border border-rule text-ink-dark/60 hover:border-gold'"
+            >
+              Pasteur existant
+            </button>
+            <button
+              type="button"
+              @click="pastorMode = 'new'"
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+              :class="pastorMode === 'new' ? 'bg-gold text-ink-dark' : 'border border-rule text-ink-dark/60 hover:border-gold'"
+            >
+              Nouveau pasteur
+            </button>
+          </div>
+
+          <!-- Existing pastor -->
+          <div v-if="pastorMode === 'existing'">
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+              Pasteur responsable *
+            </label>
+            <div v-if="loadingPastors" class="py-3 text-sm text-ink-dark/40">Chargement des pasteurs…</div>
+            <select
+              v-else
+              v-model="form.pastor_member_id"
+              required
+              :disabled="saving"
+              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
+            >
+              <option value="" disabled>Sélectionner un pasteur…</option>
+              <option v-for="p in pastors" :key="p.id" :value="p.id">
+                {{ p.first_name }} {{ p.last_name }} — {{ p.member_code }}
+              </option>
+            </select>
+            <p v-if="fieldErrors.pastor_member_id" class="mt-1 text-xs text-rust">{{ fieldErrors.pastor_member_id[0] }}</p>
+            <p v-if="!pastors.length && !loadingPastors" class="mt-1 text-xs text-ink-dark/40">
+              Aucun pasteur disponible. Créez un nouveau pasteur ou enregistrez d'abord un membre avec le titre « Pasteur ».
+            </p>
+          </div>
+
+          <!-- New pastor -->
+          <div v-else class="space-y-4 rounded-md border border-rule bg-parchment/30 p-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Prénom *</label>
+                <input v-model="form.new_pastor_first_name" type="text" required :disabled="saving"
+                  class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                <p v-if="fieldErrors.new_pastor_first_name" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_first_name[0] }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Nom *</label>
+                <input v-model="form.new_pastor_last_name" type="text" required :disabled="saving"
+                  class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                <p v-if="fieldErrors.new_pastor_last_name" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_last_name[0] }}</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Genre *</label>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+                    <input type="radio" v-model="form.new_pastor_gender" value="M" :disabled="saving" class="text-gold focus:ring-gold" /> M
+                  </label>
+                  <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+                    <input type="radio" v-model="form.new_pastor_gender" value="F" :disabled="saving" class="text-gold focus:ring-gold" /> F
+                  </label>
+                </div>
+                <p v-if="fieldErrors.new_pastor_gender" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_gender[0] }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Titre ecclésiastique *</label>
+                <select v-model="form.new_pastor_ecclesiastical_title_id" required :disabled="saving || loadingTitles"
+                  class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60">
+                  <option value="" disabled>Sélectionner…</option>
+                  <option v-for="t in titles" :key="t.id" :value="t.id">{{ t.name }}</option>
+                </select>
+                <p v-if="fieldErrors.new_pastor_ecclesiastical_title_id" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_ecclesiastical_title_id[0] }}</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Email *</label>
+                <input v-model="form.new_pastor_email" type="email" required :disabled="saving"
+                  class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                <p v-if="fieldErrors.new_pastor_email" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_email[0] }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Date de naissance *</label>
+                <input v-model="form.new_pastor_birth_date" type="date" required :disabled="saving"
+                  class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                <p v-if="fieldErrors.new_pastor_birth_date" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_birth_date[0] }}</p>
+              </div>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+                <input type="checkbox" v-model="form.new_pastor_baptized" :disabled="saving" class="h-4 w-4 rounded border-rule text-gold focus:ring-gold" />
+                Baptisé(e)
+              </label>
+              <p v-if="fieldErrors.new_pastor_baptized" class="mt-1 text-xs text-rust">{{ fieldErrors.new_pastor_baptized[0] }}</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Admin -->
-        <div>
-          <label class="mb-1.5 flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+        <!-- Admin: Pastor as admin checkbox + mode toggle -->
+        <div class="space-y-3">
+          <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
             <input
               type="checkbox"
               v-model="form.pastor_is_admin"
@@ -324,23 +454,107 @@ onMounted(() => {
             Le pasteur est aussi l'administrateur de l'église
           </label>
 
-          <div v-if="!form.pastor_is_admin" class="mt-3">
-            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
-              Administrateur d'église *
-            </label>
-            <div v-if="loadingMembers" class="py-3 text-sm text-ink-dark/40">Chargement des membres…</div>
-            <select
-              v-else
-              v-model="form.admin_member_id"
-              :disabled="saving"
-              class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
-            >
-              <option value="" disabled>Sélectionner un membre…</option>
-              <option v-for="m in members" :key="m.id" :value="m.id">
-                {{ m.first_name }} {{ m.last_name }} — {{ m.member_code }}
-              </option>
-            </select>
-            <p v-if="fieldErrors.admin_member_id" class="mt-1 text-xs text-rust">{{ fieldErrors.admin_member_id[0] }}</p>
+          <div v-if="!form.pastor_is_admin">
+            <div class="mb-3 flex gap-2">
+              <button
+                type="button"
+                @click="adminMode = 'existing'"
+                class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+                :class="adminMode === 'existing' ? 'bg-gold text-ink-dark' : 'border border-rule text-ink-dark/60 hover:border-gold'"
+              >
+                Admin existant
+              </button>
+              <button
+                type="button"
+                @click="adminMode = 'new'"
+                class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+                :class="adminMode === 'new' ? 'bg-gold text-ink-dark' : 'border border-rule text-ink-dark/60 hover:border-gold'"
+              >
+                Nouvel admin
+              </button>
+            </div>
+
+            <!-- Existing admin -->
+            <div v-if="adminMode === 'existing'">
+              <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+                Administrateur d'église *
+              </label>
+              <div v-if="loadingMembers" class="py-3 text-sm text-ink-dark/40">Chargement des membres…</div>
+              <select
+                v-else
+                v-model="form.admin_member_id"
+                :disabled="saving"
+                class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
+              >
+                <option value="" disabled>Sélectionner un membre…</option>
+                <option v-for="m in members" :key="m.id" :value="m.id">
+                  {{ m.first_name }} {{ m.last_name }} — {{ m.member_code }}
+                </option>
+              </select>
+              <p v-if="fieldErrors.admin_member_id" class="mt-1 text-xs text-rust">{{ fieldErrors.admin_member_id[0] }}</p>
+            </div>
+
+            <!-- New admin -->
+            <div v-else class="space-y-4 rounded-md border border-rule bg-parchment/30 p-4">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Prénom *</label>
+                  <input v-model="form.new_admin_first_name" type="text" required :disabled="saving"
+                    class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                  <p v-if="fieldErrors.new_admin_first_name" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_first_name[0] }}</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Nom *</label>
+                  <input v-model="form.new_admin_last_name" type="text" required :disabled="saving"
+                    class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                  <p v-if="fieldErrors.new_admin_last_name" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_last_name[0] }}</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Genre *</label>
+                  <div class="flex gap-4">
+                    <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+                      <input type="radio" v-model="form.new_admin_gender" value="M" :disabled="saving" class="text-gold focus:ring-gold" /> M
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+                      <input type="radio" v-model="form.new_admin_gender" value="F" :disabled="saving" class="text-gold focus:ring-gold" /> F
+                    </label>
+                  </div>
+                  <p v-if="fieldErrors.new_admin_gender" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_gender[0] }}</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Titre ecclésiastique *</label>
+                  <select v-model="form.new_admin_ecclesiastical_title_id" required :disabled="saving || loadingTitles"
+                    class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60">
+                    <option value="" disabled>Sélectionner…</option>
+                    <option v-for="t in titles" :key="t.id" :value="t.id">{{ t.name }}</option>
+                  </select>
+                  <p v-if="fieldErrors.new_admin_ecclesiastical_title_id" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_ecclesiastical_title_id[0] }}</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Email *</label>
+                  <input v-model="form.new_admin_email" type="email" required :disabled="saving"
+                    class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                  <p v-if="fieldErrors.new_admin_email" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_email[0] }}</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">Date de naissance *</label>
+                  <input v-model="form.new_admin_birth_date" type="date" required :disabled="saving"
+                    class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60" />
+                  <p v-if="fieldErrors.new_admin_birth_date" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_birth_date[0] }}</p>
+                </div>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 text-sm text-ink-dark/70 cursor-pointer">
+                  <input type="checkbox" v-model="form.new_admin_baptized" :disabled="saving" class="h-4 w-4 rounded border-rule text-gold focus:ring-gold" />
+                  Baptisé(e)
+                </label>
+                <p v-if="fieldErrors.new_admin_baptized" class="mt-1 text-xs text-rust">{{ fieldErrors.new_admin_baptized[0] }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

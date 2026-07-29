@@ -75,13 +75,15 @@ async function sendMessage(text = null) {
 
   loading.value = true
   try {
-    // Send full conversation history (user + assistant messages only, no system prompt)
-    const chatMessages = messages.value
+    // Build history from prior messages (exclude the welcome message and the current user message)
+    const history = messages.value
+      .slice(0, -1) // exclude the just-added user message
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .map(m => ({ role: m.role, content: m.content }))
 
-    const { data } = await AiAssistantAPI.chat(chatMessages)
-    const reply = data.data?.reply || data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.'
+    // Backend expects: { message: string, history: [{role, content}] }
+    const { data } = await AiAssistantAPI.chat(content, history)
+    const reply = data.data?.answer || data.answer || data.data?.reply || data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.'
 
     messages.value.push({ role: 'assistant', content: reply })
     saveChat()

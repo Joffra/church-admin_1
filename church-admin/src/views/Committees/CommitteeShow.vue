@@ -23,7 +23,7 @@ const addForm = ref({ member_id: '', title_id: '' })
 const addError = ref('')
 const adding = ref(false)
 
-// Remove member
+// Remove member — now captures title_id for the backend
 const removeTarget = ref(null)
 const removing = ref(false)
 
@@ -86,14 +86,12 @@ async function openAddModal() {
   loadingMembers.value = true
   loadingTitles.value = true
 
-  // Load members and available titles in parallel
   try {
     const [membersRes, titlesRes] = await Promise.all([
       MembersAPI.list(),
       TitlesAPI.availableFor(route.params.id),
     ])
     const allMembers = Array.isArray(membersRes.data) ? membersRes.data : (membersRes.data.data ?? [])
-    // Filter out members already in the committee
     const existingIds = new Set((committee.value?.members || []).map(m => m.id))
     members.value = allMembers.filter(m => !existingIds.has(m.id))
 
@@ -134,11 +132,15 @@ async function handleAddMember() {
   }
 }
 
+// FIXED: Now passes both member_id AND title_id to the backend
 async function handleRemoveMember() {
   if (!removeTarget.value) return
   removing.value = true
   try {
-    await CommitteesAPI.removeMember(route.params.id, removeTarget.value.id)
+    await CommitteesAPI.removeMember(route.params.id, {
+      member_id: removeTarget.value.id,
+      title_id: removeTarget.value.assignment?.title?.id,
+    })
     removeTarget.value = null
     successMessage.value = 'Membre retiré du comité.'
     await loadCommittee()
@@ -146,6 +148,17 @@ async function handleRemoveMember() {
     error.value = e.response?.data?.message || "Une erreur s'est produite lors du retrait."
   } finally {
     removing.value = false
+  }
+}
+
+// FIXED: Sets removeTarget with title info from the member's assignment
+function setRemoveTarget(member) {
+  removeTarget.value = {
+    id: member.id,
+    first_name: member.first_name,
+    last_name: member.last_name,
+    title_id: member.assignment?.title?.id,
+    title_name: member.assignment?.title?.name,
   }
 }
 
@@ -302,14 +315,16 @@ onMounted(loadCommittee)
               <td class="px-5 py-3.5 font-medium text-ink-dark">
                 {{ m.first_name }} {{ m.last_name }}
               </td>
-              <td class="px-5 py-3.5 font-mono text-xs text-ink-dark/60">{{ m.member_code || '—' }}</td>
-              <td class="px-5 py-3.5 text-ink-dark/60">{{ m.ecclesiastical_title || '—' }}</td>
+              <td class="px-5 py-3.5 font-mono text-xs text-ink-dark/55">{{ m.member_code || '—' }}</td>
+              <td class="px-5 py-3.5 text-ink-dark/60">
+                {{ m.ecclesiastical_title?.name || m.ecclesiasticalTitle?.name || '—' }}
+              </td>
               <td class="px-5 py-3.5">
-                <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-xs font-medium text-ink-dark/70">
-                  {{ m.assignment?.title?.name || '—' }}
+                <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-0.5 text-xs font-medium text-ink-dark/70">
+                  {{ m.assignment?.title?.name || m.pivot?.title?.name || '—' }}
                 </span>
               </td>
-              <td class="px-5 py-3.5 text-ink-dark/60">{{ formatDate(m.assignment?.assigned_at) }}</td>
+              <td class="px-5 py-3.5 text-ink-dark/60">{{ formatDate(m.assignment?.assigned_at || m.pivot?.assigned_at) }}</td>
               <td v-if="auth.canManageCommittees" class="px-5 py-3.5 text-right">
                 <!-- Pasteur Responsable: "Changer" button -->
                 <button
@@ -319,10 +334,10 @@ onMounted(loadCommittee)
                 >
                   Changer
                 </button>
-                <!-- All others: "Retirer" button -->
+                <!-- All others: "Retirer" button — FIXED: passes full member object -->
                 <button
                   v-else
-                  @click="removeTarget = m"
+                  @click="setRemoveTarget(m)"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
                 >
                   Retirer
@@ -390,7 +405,7 @@ onMounted(loadCommittee)
       </div>
     </div>
 
-    <!-- Remove Member Modal -->
+    <!-- Remove Member Modal — FIXED: shows title info -->
     <div
       v-if="removeTarget"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/40 backdrop-blur-sm"
@@ -401,6 +416,7 @@ onMounted(loadCommittee)
         <p class="mt-2 text-sm text-ink-dark/60">
           Êtes-vous sûr de vouloir retirer
           <strong>{{ removeTarget.first_name }} {{ removeTarget.last_name }}</strong>
+          du poste « {{ removeTarget.title_name || '—' }} »
           du comité « {{ committee?.name }} » ?
         </p>
         <div class="mt-6 flex justify-end gap-3 border-t border-rule pt-4">

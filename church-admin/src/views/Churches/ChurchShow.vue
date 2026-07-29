@@ -16,6 +16,12 @@ const confirmArchive = ref(false)
 const archiving = ref(false)
 const togglingStatus = ref(false)
 
+// Archive with transfer state
+const targetChurchId = ref('')
+const allChurches = ref([])
+const loadingChurches = ref(false)
+const transferMessage = ref('')
+
 // Change pastor modal state
 const showPastorModal = ref(false)
 const pastors = ref([])
@@ -31,6 +37,8 @@ const loadingMembers = ref(false)
 const selectedAdminId = ref('')
 const changingAdmin = ref(false)
 const adminError = ref('')
+
+const hasMembers = computed(() => (church.value?.members?.length ?? 0) > 0)
 
 async function load() {
   loading.value = true
@@ -62,13 +70,48 @@ async function toggleStatus() {
   }
 }
 
+async function openArchiveModal() {
+  confirmArchive.value = true
+  transferMessage.value = ''
+  targetChurchId.value = ''
+  // If church has members, load available target churches
+  if (hasMembers.value) {
+    loadingChurches.value = true
+    try {
+      const { data } = await ChurchesAPI.list({ per_page: 100 })
+      const all = data.data ?? data
+      allChurches.value = all.filter(c => c.id !== church.value.id)
+    } catch {
+      // silent
+    } finally {
+      loadingChurches.value = false
+    }
+  }
+}
+
 async function onArchive() {
   archiving.value = true
+  error.value = ''
   try {
-    await ChurchesAPI.remove(route.params.id)
-    router.push({ name: 'churches' })
+    const payload = hasMembers.value && targetChurchId.value
+      ? { target_church_id: targetChurchId.value }
+      : {}
+    const res = await ChurchesAPI.remove(route.params.id, payload)
+    // Backend returns a transfer-in-progress message if members were transferred
+    const msg = res.data?.message
+    if (msg && hasMembers.value && targetChurchId.value) {
+      transferMessage.value = msg
+      // Wait a moment then redirect
+      setTimeout(() => router.push({ name: 'churches' }), 2500)
+    } else {
+      router.push({ name: 'churches' })
+    }
   } catch (e) {
-    error.value = "Impossible d'archiver cette église."
+    if (e.response?.status === 422) {
+      error.value = e.response?.data?.message || "Impossible de supprimer cette église. Veuillez d'abord transférer ses membres."
+    } else {
+      error.value = e.response?.data?.message || "Impossible d'archiver cette église."
+    }
     archiving.value = false
     confirmArchive.value = false
   }
@@ -100,8 +143,6 @@ async function onChangePastor() {
   try {
     await ChurchesAPI.changePastor(church.value.id, selectedPastorId.value)
     showPastorModal.value = false
-    // Reload the full church data so pastor AND admin info are both fresh
-    // (the changePastor response only loads headPastor, not churchAdmin)
     await load()
   } catch (e) {
     pastorError.value = e.response?.data?.message || 'Impossible de changer le pasteur responsable.'
@@ -136,7 +177,6 @@ async function onChangeAdmin() {
   try {
     await ChurchesAPI.changeAdmin(church.value.id, selectedAdminId.value)
     showAdminModal.value = false
-    // Reload the full church data so admin info is fresh
     await load()
   } catch (e) {
     adminError.value = e.response?.data?.message || "Impossible de changer l'administrateur de l'église."
@@ -154,13 +194,23 @@ function getStatus(church) {
 }
 
 function pastorName(c) {
-  if (!c?.pastor?.id) return '—'
-  return `${c.pastor.first_name ?? ''} ${c.pastor.last_name ?? ''}`.trim()
+  if (!c?.head_pastor?.id && !c?.pastor?.id) return '—'
+  const p = c.head_pastor || c.pastor
+  return `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim()
 }
 
 function adminName(c) {
-  if (!c?.admin?.id) return '—'
-  return `${c.admin.first_name ?? ''} ${c.admin.last_name ?? ''}`.trim()
+  if (!c?.church_admin?.id && !c?.admin?.id) return '—'
+  const a = c.church_admin || c.admin
+  return `${a.first_name ?? ''} ${a.last_name ?? ''}`.trim()
+}
+
+function pastorId(c) {
+  return c?.head_pastor?.id || c?.pastor?.id
+}
+
+function adminId(c) {
+  return c?.church_admin?.id || c?.admin?.id
 }
 
 function memberFullName(m) {
@@ -206,7 +256,7 @@ onMounted(load)
             Modifier
           </RouterLink>
           <button
-            @click="confirmArchive = true"
+            @click="openArchiveModal"
             class="rounded-md border border-rust/30 px-4 py-2 text-sm font-medium text-rust/80 transition hover:bg-rust/5"
           >
             Archiver
@@ -237,7 +287,6 @@ onMounted(load)
           <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-dark/40">Coordonnées GPS</dt>
           <dd class="mt-1 font-mono text-sm text-ink-dark">{{ church.gps_coordinates || '—' }}</dd>
         </div>
-        <!-- Map display moved here for prominence -->
         <div v-if="church.gps_coordinates" class="col-span-1 sm:col-span-2 mt-1">
           <MapPicker :model-value="church.gps_coordinates" :readonly="true" />
         </div>
@@ -253,8 +302,8 @@ onMounted(load)
             <p class="text-[11px] uppercase tracking-wide text-ink-dark/40">Pasteur responsable</p>
             <p class="mt-0.5 text-sm font-medium text-ink-dark">{{ pastorName(church) }}</p>
             <RouterLink
-              v-if="church.pastor?.id && auth.canViewMembers"
-              :to="{ name: 'member-show', params: { id: church.pastor.id } }"
+              v-if="pastorId(church) && auth.canViewMembers"
+              :to="{ name: 'member-show', params: { id: pastorId(church) } }"
               class="mt-1 inline-block text-xs text-gold hover:underline"
             >
               Voir la fiche →
@@ -275,8 +324,8 @@ onMounted(load)
             <p class="text-[11px] uppercase tracking-wide text-ink-dark/40">Administrateur d'église</p>
             <p class="mt-0.5 text-sm font-medium text-ink-dark">{{ adminName(church) }}</p>
             <RouterLink
-              v-if="church.admin?.id && auth.canViewMembers"
-              :to="{ name: 'member-show', params: { id: church.admin.id } }"
+              v-if="adminId(church) && auth.canViewMembers"
+              :to="{ name: 'member-show', params: { id: adminId(church) } }"
               class="mt-1 inline-block text-xs text-gold hover:underline"
             >
               Voir la fiche →
@@ -292,30 +341,80 @@ onMounted(load)
         </div>
       </div>
 
-
+      <!-- Members count -->
+      <div v-if="hasMembers" class="rounded-lg border border-rule bg-white p-6">
+        <h2 class="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-dark/45">Membres</h2>
+        <p class="text-sm text-ink-dark/60">
+          Cette église compte {{ church.members.length }} membre(s).
+          <RouterLink v-if="auth.canViewMembers" :to="{ name: 'members', query: { church_id: church.id } }" class="text-gold hover:underline">
+            Voir les membres →
+          </RouterLink>
+        </p>
+      </div>
     </div>
 
-    <!-- Confirm archive modal -->
+    <!-- Confirm archive modal — FIXED: handles member transfer -->
     <div
       v-if="confirmArchive"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
       @click.self="confirmArchive = false"
     >
-      <div class="w-full max-w-sm rounded-lg bg-white p-6">
+      <div class="w-full max-w-md rounded-lg bg-white p-6">
         <h3 class="font-display text-lg text-ink-dark">Archiver cette église ?</h3>
-        <p class="mt-2 text-sm text-ink-dark/60">
-          L'église ne sera plus visible dans la liste, mais ses données resteront conservées dans le registre.
-        </p>
+
+        <!-- Transfer message (success after initiating transfer) -->
+        <div v-if="transferMessage" class="mt-3 rounded-md border border-sage/30 bg-sage/5 px-4 py-3 text-sm text-sage">
+          {{ transferMessage }}
+        </div>
+
+        <template v-else>
+          <p class="mt-2 text-sm text-ink-dark/60">
+            L'église ne sera plus visible dans la liste, mais ses données resteront conservées dans le registre.
+          </p>
+
+          <!-- Member transfer warning -->
+          <div v-if="hasMembers" class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+            <p class="text-sm text-amber-800">
+              <strong>Attention :</strong> Cette église compte {{ church.members.length }} membre(s).
+              Vous devez transférer ces membres vers une autre église avant la suppression.
+            </p>
+            <div class="mt-3">
+              <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
+                Église de destination *
+              </label>
+              <div v-if="loadingChurches" class="py-2 text-sm text-ink-dark/40">Chargement des églises…</div>
+              <select
+                v-else
+                v-model="targetChurchId"
+                class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
+              >
+                <option value="" disabled>Sélectionner une église…</option>
+                <option v-for="c in allChurches" :key="c.id" :value="c.id">
+                  {{ c.structure?.name || c.name || '—' }}
+                </option>
+              </select>
+              <p v-if="!allChurches.length && !loadingChurches" class="mt-1 text-xs text-ink-dark/40">
+                Aucune autre église disponible pour le transfert.
+              </p>
+            </div>
+          </div>
+        </template>
+
         <div class="mt-6 flex justify-end gap-3">
-          <button @click="confirmArchive = false" class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark">
+          <button
+            v-if="!transferMessage"
+            @click="confirmArchive = false"
+            class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
+          >
             Annuler
           </button>
           <button
-            :disabled="archiving"
+            v-if="!transferMessage"
+            :disabled="archiving || (hasMembers && !targetChurchId)"
             @click="onArchive"
             class="rounded-md bg-rust px-4 py-2 text-sm font-semibold text-white transition hover:bg-rust/90 disabled:opacity-60"
           >
-            {{ archiving ? 'Archivage…' : 'Archiver' }}
+            {{ archiving ? 'Archivage…' : hasMembers ? 'Transférer et archiver' : 'Archiver' }}
           </button>
         </div>
       </div>
