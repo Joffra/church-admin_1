@@ -121,6 +121,8 @@ async function fetchVerse(mood, topics) {
 
   try {
     // Build the effective mood: user's mood + exclusion instructions + nonce
+    // We keep the ORIGINAL clean mood separately so we only display that in the UI
+    const originalMood = mood || null
     const excludeRefs = getShownReferences()
     const nonce = Date.now()
 
@@ -129,14 +131,13 @@ async function fetchVerse(mood, topics) {
     // Append exclusion list so the AI avoids repeats
     if (excludeRefs.length > 0) {
       const excludeStr = excludeRefs.join(', ')
-      const excludeLine = `IMPORTANT: Ne propose PAS ces versets déjà proposés: ${excludeStr}. Choisis un verset DIFFÉREENT.`
+      const excludeLine = `IMPORTANT: Ne propose PAS ces versets déjà proposés: ${excludeStr}. Choisis un verset DIFFERENT.`
       effectiveMood = effectiveMood
         ? `${effectiveMood}. ${excludeLine}`
         : excludeLine
     }
 
     // Append a nonce to guarantee the prompt is never byte-for-byte identical
-    // (the backend embeds this in the system prompt, so variation here = variation in output)
     effectiveMood = effectiveMood
       ? `${effectiveMood} [${nonce}]`
       : `Sélection variée ${nonce}`
@@ -146,6 +147,16 @@ async function fetchVerse(mood, topics) {
 
     const { data } = await DailyVerseAPI.getVerse(payload)
     const verseData = data.data ?? data
+
+    // Store the clean original mood so the UI displays it nicely
+    // (not the raw exclusion-instruction string the backend echoes back)
+    if (originalMood) {
+      verseData.display_mood = originalMood
+    } else if (topics && topics.length) {
+      verseData.display_mood = topics.join(', ')
+    } else {
+      verseData.display_mood = null
+    }
 
     verse.value = verseData
     saveVerse(verseData)
@@ -265,10 +276,10 @@ onMounted(() => {
               {{ verse.theme }}
             </span>
             <span
-              v-if="verse.user_mood"
+              v-if="verse.display_mood"
               class="inline-flex items-center rounded-full bg-ink/5 px-2 py-0.5 text-[10px] text-ink-dark/55"
             >
-              « {{ verse.user_mood }} »
+              {{ verse.display_mood }}
             </span>
           </div>
 
