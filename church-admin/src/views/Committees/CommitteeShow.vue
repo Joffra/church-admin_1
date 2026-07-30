@@ -317,7 +317,7 @@ onMounted(loadCommittee)
               </td>
               <td class="px-5 py-3.5 font-mono text-xs text-ink-dark/55">{{ m.member_code || '—' }}</td>
               <td class="px-5 py-3.5 text-ink-dark/60">
-                {{ m.ecclesiastical_title?.name || m.ecclesiasticalTitle?.name || '—' }}
+                {{ m.ecclesiastical_title || '—' }}
               </td>
               <td class="px-5 py-3.5">
                 <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-0.5 text-xs font-medium text-ink-dark/70">

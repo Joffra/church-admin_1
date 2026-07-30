@@ -1,12 +1,29 @@
 <script setup>
-import { useRoute } from 'vue-router'
+import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import SideNav from './components/SideNav.vue'
 import PortalNav from './components/PortalNav.vue'
 import PortalFooter from './components/PortalFooter.vue'
 import AiChatWidget from './components/AiChatWidget.vue'
 import DailyVerseWidget from './components/DailyVerseWidget.vue'
+import { useAuthStore } from './stores/auth'
+import { setPasswordChangeHandler } from './services/api'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+// Wire up the 403 PASSWORD_CHANGE_REQUIRED interceptor
+// When the backend blocks an API call because the user hasn't changed their
+// password, we flag it in the store and redirect to the password change page.
+onMounted(() => {
+  setPasswordChangeHandler(() => {
+    auth.flagMustChangePassword()
+    if (router.currentRoute.value.name !== 'password-change') {
+      router.push({ name: 'password-change' })
+    }
+  })
+})
 </script>
 
 <template>

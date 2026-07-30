@@ -7,6 +7,71 @@ const mission = ref(null)
 const loading = ref(true)
 const error = ref('')
 
+// ---- Map state ----
+const showMap = ref(false)
+const mapEl = ref(null)
+let mapInstance = null
+
+function parseCoords(str) {
+  if (!str) return null
+  const parts = str.split(',').map(s => parseFloat(s.trim()))
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts
+  return null
+}
+
+function toggleMap() {
+  showMap.value = !showMap.value
+  if (showMap.value) {
+    nextTick(initMap)
+  } else if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
+}
+
+function initMap() {
+  if (mapInstance) { mapInstance.remove(); mapInstance = null }
+
+  const churchesWithCoords = (mission.value?.churches || [])
+    .map(c => ({ ...c, coords: parseCoords(c.gps_coordinates) }))
+    .filter(c => c.coords)
+
+  const allCoords = churchesWithCoords.map(c => c.coords)
+  let center = [18.9712, -72.2852] // Haiti default
+  let zoom = 8
+  if (allCoords.length === 1) {
+    center = allCoords[0]
+    zoom = 14
+  } else if (allCoords.length > 1) {
+    // Fit bounds to include all churches
+    const lats = allCoords.map(c => c[0])
+    const lngs = allCoords.map(c => c[1])
+    center = [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2]
+    zoom = 9
+  }
+
+  mapInstance = L.map(mapEl.value).setView(center, zoom)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+  }).addTo(mapInstance)
+
+  churchesWithCoords.forEach(c => {
+    const marker = L.marker(c.coords).addTo(mapInstance)
+    const popupHtml = `<div style="min-width:180px">
+      <strong>${c.name || 'Église'}</strong><br/>
+      ${c.address ? '<span style="font-size:11px;color:#666">' + c.address + '</span><br/>' : ''}
+      ${c.pastor?.first_name ? '<span style="font-size:11px">Pasteur: ' + (c.pastor.first_name + ' ' + (c.pastor.last_name || '')).trim() + '</span>' : ''}
+    </div>`
+    marker.bindPopup(popupHtml)
+  })
+
+  // If multiple churches, fit bounds
+  if (allCoords.length > 1) {
+    mapInstance.fitBounds(L.latLngBounds(allCoords).pad(0.1))
+  }
+}
+
 // ---- Helpers ----
 function fullName(m) {
   if (!m) return '—'
@@ -81,6 +146,10 @@ async function loadMission() {
 }
 
 onMounted(loadMission)
+
+onUnmounted(() => {
+  if (mapInstance) { mapInstance.remove(); mapInstance = null }
+})
 </script>
 
 <template>
@@ -186,6 +255,13 @@ onMounted(loadMission)
       <section>
         <h2 class="font-display text-2xl text-ink-dark">Direction de la Mission</h2>
         <p class="mt-1 text-sm text-ink-dark/50">Les responsables qui assurent le leadership spirituel et administratif.</p>
+
+        <!-- Map showing all churches -->
+        <transition name="map-fade">
+          <div v-if="showMap" class="mt-6 overflow-hidden rounded-xl border border-ink/10 shadow-md">
+            <div ref="mapEl" class="h-96 w-full"></div>
+          </div>
+        </transition>
 
         <div class="mt-6 grid gap-5 sm:grid-cols-2">
           <!-- Bishop -->
@@ -358,9 +434,15 @@ onMounted(loadMission)
             <h2 class="font-display text-2xl text-ink-dark">Églises de la Mission</h2>
             <p class="mt-1 text-sm text-ink-dark/50">{{ mission.churches.length }} église{{ mission.churches.length > 1 ? 's' : '' }} rattachée{{ mission.churches.length > 1 ? 's' : '' }} à la mission.</p>
           </div>
-          <RouterLink to="/eglises" class="hidden sm:inline-flex text-sm font-medium text-gold hover:underline">
-            Voir la carte →
-          </RouterLink>
+          <button
+            @click="toggleMap"
+            class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-gold hover:underline"
+          >
+            {{ showMap ? 'Masquer la carte' : 'Voir la carte' }}
+            <svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform" :class="showMap ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
         </div>
 
         <div class="mt-6 grid gap-5 sm:grid-cols-2">
@@ -414,3 +496,20 @@ onMounted(loadMission)
     </div>
   </div>
 </template>
+
+<style scoped>
+.map-fade-enter-active,
+.map-fade-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.map-fade-enter-from,
+.map-fade-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+.map-fade-enter-to,
+.map-fade-leave-from {
+  max-height: 500px;
+}
+</style>

@@ -42,12 +42,32 @@ function isActive(path) {
         </RouterLink>
       </nav>
 
-      <RouterLink
-        :to="auth.isAuthenticated ? '/admin' : '/login'"
-        class="rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark"
-      >
-        {{ auth.isAuthenticated ? 'Tableau de bord' : 'Connexion' }}
-      </RouterLink>
+      <div class="flex items-center gap-2">
+        <!-- Login button for unauthenticated users -->
+        <RouterLink
+          v-if="!auth.isAuthenticated"
+          to="/login"
+          class="rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark"
+        >
+          Connexion
+        </RouterLink>
+        <!-- Dashboard button for admins -->
+        <RouterLink
+          v-else-if="auth.canAccessDashboard"
+          to="/admin"
+          class="rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark"
+        >
+          Tableau de bord
+        </RouterLink>
+        <!-- For simple users: show profile access -->
+        <RouterLink
+          v-else
+          to="/profile"
+          class="rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark"
+        >
+          Mon profil
+        </RouterLink>
+      </div>
     </div>
 
     <nav class="flex items-center gap-1 overflow-x-auto px-4 pb-2 md:hidden">

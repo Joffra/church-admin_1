@@ -43,7 +43,6 @@ function saveChat() {
 function toggleChat() {
   isOpen.value = !isOpen.value
   if (isOpen.value && messages.value.length === 0) {
-    // Welcome message on first open
     messages.value.push({
       role: 'assistant',
       content: "Bonjour ! Je suis l'assistant pastoral de MECEIPH. Je suis là pour répondre à vos questions spirituelles, vous orienter vers une église, ou simplement échanger. Comment puis-je vous aider aujourd'hui ?",
@@ -61,8 +60,10 @@ function scrollToBottom() {
   }
 }
 
-async function sendMessage(text = null) {
-  const content = (text || input.value).trim()
+// FIXED: No longer takes a `text` param — Vue was passing the Event object
+// as the first argument, causing .trim() to fail on an Event.
+async function sendMessage() {
+  const content = input.value.trim()
   if (!content || loading.value) return
 
   error.value = ''
@@ -75,13 +76,12 @@ async function sendMessage(text = null) {
 
   loading.value = true
   try {
-    // Build history from prior messages (exclude the welcome message and the current user message)
+    // Build history from prior messages (exclude welcome message + the just-added user message)
     const history = messages.value
-      .slice(0, -1) // exclude the just-added user message
+      .slice(0, -1)
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .map(m => ({ role: m.role, content: m.content }))
 
-    // Backend expects: { message: string, history: [{role, content}] }
     const { data } = await AiAssistantAPI.chat(content, history)
     const reply = data.data?.answer || data.answer || data.data?.reply || data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.'
 
@@ -103,14 +103,16 @@ async function sendMessage(text = null) {
   }
 }
 
+// FIXED: No args — reads from input ref directly
 function useSuggestion(suggestion) {
-  sendMessage(suggestion)
+  input.value = suggestion
+  sendMessage()
 }
 
 function clearChat() {
   messages.value = []
   sessionStorage.removeItem(STORAGE_KEY)
-  toggleChat() // reopen with welcome
+  toggleChat()
 }
 
 onMounted(loadChat)
@@ -125,7 +127,6 @@ onMounted(loadChat)
       class="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-ink-dark shadow-lg transition hover:scale-105 hover:bg-gold-light"
       aria-label="Ouvrir l'assistant IA"
     >
-      <!-- Chat icon -->
       <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -208,7 +209,7 @@ onMounted(loadChat)
           </div>
         </div>
 
-        <!-- Suggestions (only on first interaction, when there's only the welcome message) -->
+        <!-- Suggestions (only on first interaction) -->
         <div v-if="messages.length <= 1 && !loading" class="border-t border-rule bg-white px-4 py-3">
           <p class="mb-2 text-[10px] font-medium uppercase tracking-wide text-ink-dark/40">Suggestions</p>
           <div class="flex flex-wrap gap-2">
@@ -223,16 +224,16 @@ onMounted(loadChat)
           </div>
         </div>
 
-        <!-- Input area -->
+        <!-- Input area — FIXED: sendMessage() with parens to avoid passing Event -->
         <div class="border-t border-rule bg-white p-3">
-          <form @submit.prevent="sendMessage" class="flex items-end gap-2">
+          <form @submit.prevent="sendMessage()" class="flex items-end gap-2">
             <textarea
               v-model="input"
               rows="1"
               placeholder="Posez votre question…"
               class="flex-1 resize-none rounded-xl border border-rule px-4 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
               style="max-height: 100px"
-              @keydown.enter.exact.prevent="sendMessage"
+              @keydown.enter.exact.prevent="sendMessage()"
               @input="($event.target.style.height = 'auto'), ($event.target.style.height = Math.min($event.target.scrollHeight, 100) + 'px')"
             />
             <button

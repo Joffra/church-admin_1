@@ -17,11 +17,19 @@ async function onSubmit() {
   submitted.value = true
   const ok = await auth.login(member_code.value.trim(), password.value)
   if (ok) {
-    // If user must change password, redirect there first
+    // If backend returns must_change_password flag, redirect to password change
     if (auth.mustChangePassword) {
       router.push({ name: 'password-change' })
       return
     }
+
+    // If user is a simple user (no admin access), redirect to portal
+    // They can still access /profile and /password/* from the portal login button
+    if (!auth.canAccessDashboard) {
+      router.push({ name: 'portal-home' })
+      return
+    }
+
     const redirect = route.query.redirect || '/admin'
     router.push(redirect)
   }

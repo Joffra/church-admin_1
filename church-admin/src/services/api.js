@@ -14,13 +14,33 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// If the token is rejected/expired, clear local auth state.
+let onPasswordChangeRequired = null
+
+export function setPasswordChangeHandler(fn) {
+  onPasswordChangeRequired = fn
+}
+
+// Response interceptor: handle 401 (expired token) and 403 (password change required)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
+    }
+    // Backend's check.password.change middleware returns 403 with PASSWORD_CHANGE_REQUIRED
+    if (error.response?.status === 403 && error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      // Update local user state
+      try {
+        const raw = localStorage.getItem('auth_user')
+        if (raw) {
+          const user = JSON.parse(raw)
+          user.must_change_password = true
+          localStorage.setItem('auth_user', JSON.stringify(user))
+        }
+      } catch {}
+      // Notify the app to redirect
+      if (onPasswordChangeRequired) onPasswordChangeRequired()
     }
     return Promise.reject(error)
   }
@@ -101,7 +121,7 @@ export const EcclesiasticalTitlesAPI = {
   remove: (id) => api.delete(`/ecclesiastical-titles/${id}`),
 }
 
-// ---- Titles (committee titles, for committee management) ----
+// ---- Titles (committee titles) ----
 
 export const TitlesAPI = {
   list: () => api.get('/titles'),
@@ -122,21 +142,17 @@ export const CommitteesAPI = {
   showByStructure: (structureId) => api.get(`/structures/${structureId}/committee`),
   update: (id, data) => api.put(`/committees/${id}`, data),
   addMember: (id, data) => api.post(`/committees/${id}/members`, data),
-  // Backend requires BOTH member_id AND title_id for removal
   removeMember: (id, data) => api.delete(`/committees/${id}/members`, { data }),
   availableTitles: (committeeId) => api.get(`/committees/${committeeId}/available-titles`),
 }
 
 // ---- Daily Verse ----
-// Public endpoint — no auth required
 
 export const DailyVerseAPI = {
   getVerse: (data) => api.post('/daily-verse', data),
 }
 
 // ---- AI Chatbot ----
-// Public endpoint — no auth required, rate-limited server-side
-// Backend expects: { message: string, history: [{role, content}] }
 
 export const AiAssistantAPI = {
   chat: (message, history = []) => api.post('/chat', { message, history }),

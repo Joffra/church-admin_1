@@ -45,10 +45,15 @@ async function onSubmit() {
     // Clear the forced-change flag in the store
     auth.passwordChanged()
 
-    // If this was a forced change, redirect to dashboard after a short delay
+    // If this was a forced change, redirect after a short delay
     if (isForced.value) {
       setTimeout(() => {
-        router.push({ name: 'dashboard' })
+        // Simple users go back to portal, admins go to dashboard
+        if (auth.canAccessDashboard) {
+          router.push({ name: 'dashboard' })
+        } else {
+          router.push({ name: 'portal-home' })
+        }
       }, 1200)
     }
   } catch (e) {

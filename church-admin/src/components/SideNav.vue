@@ -18,6 +18,9 @@ function roleLabel(role) {
 // Collapsible sections
 const passwordExpanded = ref(route.path.startsWith('/password'))
 
+// User info popup
+const showUserPopup = ref(false)
+
 const navGroups = computed(() => {
   const groups = [
     {
@@ -29,21 +32,17 @@ const navGroups = computed(() => {
     {
       label: 'Registre',
       items: [
-        // All authenticated users can view church list + details
         { to: '/churches', label: 'Églises' },
-        // Admins can browse full member list; regular users see /profile (auth store only — no API call)
         ...(auth.canViewMembers
           ? [{ to: '/members', label: 'Membres' }]
           : [{ to: '/profile', label: 'Mon profil' }]
         ),
-        // Only admins can view sanctions
         ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
         { to: '/committees', label: 'Comités' },
       ],
     },
   ]
 
-  // Administration section only for admins
   if (auth.canManageUsers) {
     groups.push({
       label: 'Administration',
@@ -62,7 +61,6 @@ function isActive(path) {
   if (path === '/sanctions') return route.path.startsWith('/sanctions')
   if (path === '/committees') return route.path.startsWith('/committees')
   if (path === '/users') return route.path.startsWith('/users')
-  // /profile: exact match
   if (path === '/profile') return route.path === '/profile'
   return route.path === path
 }
@@ -71,39 +69,68 @@ function togglePassword() {
   passwordExpanded.value = !passwordExpanded.value
 }
 
+function toggleUserPopup() {
+  showUserPopup.value = !showUserPopup.value
+}
+
+function goToProfile() {
+  showUserPopup.value = false
+  router.push({ name: 'profile' })
+}
+
+function goToPasswordChange() {
+  showUserPopup.value = false
+  router.push({ name: 'password-change' })
+}
+
 async function onLogout() {
   await auth.logout()
-  router.push({ name: 'login' })
+  router.push({ name: 'portal-home' })
 }
 </script>
 
 <template>
-  <aside class="flex h-screen w-64 shrink-0 flex-col bg-ink text-parchment">
-    <!-- Logo / brand -->
-    <div class="flex items-center gap-3 px-6 py-6">
-      <img :src="logo" alt="MECEIPH" class="brand-logo h-9 w-9 object-contain" />
-      <div>
-        <p class="font-display text-base leading-tight text-parchment">MECEIPH</p>
-        <p class="text-[10px] uppercase tracking-[0.16em] text-gold/80">Administration</p>
+  <aside class="flex w-64 shrink-0 flex-col bg-ink">
+    <!-- Logo + Retour portail -->
+    <div class="px-6 pt-5 pb-3">
+      <div class="flex items-center gap-3">
+        <img :src="logo" alt="MECEIPH" class="brand-logo h-9 w-9 object-contain" />
+        <div>
+          <p class="font-display text-sm leading-tight text-parchment">MECEIPH</p>
+          <p class="text-[10px] uppercase tracking-[0.16em] text-gold/80">Administration</p>
+        </div>
       </div>
+    </div>
+
+    <!-- Retour au portail button -->
+    <div class="px-4 pb-3">
+      <RouterLink
+        to="/"
+        class="flex items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-xs text-parchment/60 transition hover:border-gold/40 hover:text-gold"
+      >
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Retour au portail
+      </RouterLink>
     </div>
 
     <div class="mx-6 border-t border-white/10"></div>
 
-    <nav class="flex-1 overflow-y-auto px-4 py-5">
-      <!-- Standard nav groups -->
-      <div v-for="group in navGroups" :key="group.label" class="mb-6">
-        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-parchment/40">
+    <!-- Nav groups -->
+    <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+      <div v-for="group in navGroups" :key="group.label">
+        <p class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-parchment/35">
           {{ group.label }}
         </p>
         <ul class="space-y-0.5">
-          <li v-for="item in group.items.filter(i => !i.show || i.show())" :key="item.to">
+          <li v-for="item in group.items" :key="item.to">
             <RouterLink
               :to="item.to"
-              class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
+              class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
               :class="isActive(item.to)
                 ? 'bg-white/10 text-parchment font-medium'
-                : 'text-parchment/65 hover:bg-white/5 hover:text-parchment'"
+                : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
             >
               <span
                 class="h-1.5 w-1.5 rounded-full transition-colors"
@@ -115,21 +142,15 @@ async function onLogout() {
         </ul>
       </div>
 
-      <!-- Sécurité section (collapsible) -->
-      <div class="mb-2">
-        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-parchment/40">
-          Sécurité
-        </p>
+      <!-- Password section (collapsible) — always accessible -->
+      <div>
         <button
           @click="togglePassword"
-          class="group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
-          :class="passwordExpanded
-            ? 'bg-white/10 text-parchment font-medium'
-            : 'text-parchment/65 hover:bg-white/5 hover:text-parchment'"
+          class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-parchment/55 transition-colors hover:bg-white/5 hover:text-parchment"
         >
-          <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round" />
           </svg>
           <span class="flex-1 text-left">Mot de passe</span>
           <svg
@@ -187,25 +208,81 @@ async function onLogout() {
     </nav>
 
     <div class="mx-6 border-t border-white/10"></div>
-    <div class="flex items-center gap-3 px-6 py-5">
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/20 text-xs font-semibold text-gold">
-        {{ (auth.user?.first_name?.[0] || auth.user?.member_code?.[0] || 'A').toUpperCase() }}
+    <!-- User section with popup -->
+    <div class="relative px-6 py-4">
+      <!-- User popup -->
+      <transition name="popup">
+        <div
+          v-if="showUserPopup"
+          class="absolute bottom-full left-4 right-4 mb-2 rounded-lg border border-white/10 bg-ink-light p-4 shadow-xl"
+        >
+          <div class="flex items-center gap-3 mb-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/20 text-sm font-semibold text-gold">
+              {{ (auth.user?.first_name?.[0] || auth.user?.member_code?.[0] || 'A').toUpperCase() }}
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-parchment">{{ auth.fullName || auth.user?.member_code || 'Utilisateur' }}</p>
+              <p class="text-xs text-parchment/40">{{ roleLabel(auth.user?.role) }}</p>
+            </div>
+          </div>
+          <div class="space-y-1 text-xs text-parchment/50">
+            <p><span class="text-parchment/30">Code:</span> {{ auth.user?.member_code || '—' }}</p>
+            <p><span class="text-parchment/30">Rôle:</span> {{ roleLabel(auth.user?.role) }}</p>
+          </div>
+          <div class="mt-3 flex gap-2 border-t border-white/10 pt-3">
+            <button
+              @click="goToProfile"
+              class="flex-1 rounded-md border border-white/10 px-3 py-1.5 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
+            >
+              Mon profil
+            </button>
+            <button
+              @click="goToPasswordChange"
+              class="flex-1 rounded-md border border-white/10 px-3 py-1.5 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
+            >
+              Sécurité
+            </button>
+          </div>
+        </div>
+      </transition>
+
+      <div class="flex items-center gap-3">
+        <button
+          @click="toggleUserPopup"
+          class="flex flex-1 items-center gap-3 text-left transition hover:opacity-80"
+        >
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/20 text-xs font-semibold text-gold">
+            {{ (auth.user?.first_name?.[0] || auth.user?.member_code?.[0] || 'A').toUpperCase() }}
+          </div>
+          <div class="min-w-0 flex-1 text-sm">
+            <p class="truncate leading-tight text-parchment/90">
+              {{ auth.fullName || auth.user?.member_code || 'Administrateur' }}
+            </p>
+            <p class="text-xs text-parchment/40">{{ roleLabel(auth.user?.role) }}</p>
+          </div>
+        </button>
+        <button
+          @click="onLogout"
+          title="Se déconnecter"
+          class="shrink-0 rounded-md p-1.5 text-parchment/40 transition hover:bg-white/5 hover:text-gold"
+        >
+          <svg viewBox="0 0 24 24" class="h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
       </div>
-      <div class="min-w-0 flex-1 text-sm">
-        <p class="truncate leading-tight text-parchment/90">
-          {{ auth.fullName || auth.user?.member_code || 'Administrateur' }}
-        </p>
-        <p class="text-xs text-parchment/40">{{ roleLabel(auth.user?.role) }}</p>
-      </div>
-      <button
-        @click="onLogout"
-        title="Se déconnecter"
-        class="shrink-0 rounded-md p-1.5 text-parchment/40 transition hover:bg-white/5 hover:text-gold"
-      >
-        <svg viewBox="0 0 24 24" class="h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
     </div>
   </aside>
 </template>
+
+<style scoped>
+.popup-enter-active,
+.popup-leave-active {
+  transition: all 0.2s ease;
+}
+.popup-enter-from,
+.popup-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>

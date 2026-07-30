@@ -27,24 +27,37 @@ export const useAuthStore = defineStore('auth', {
     isChurchAdmin: (state) => state.user?.role === 'church_admin',
     // Admin = both mission_admin and church_admin
     isAdmin: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
+    isSimpleUser: (state) => state.user?.role === 'user',
 
     // Must change password (forced on first login or after admin reset)
     mustChangePassword: (state) => !!state.user?.must_change_password,
 
-    // ---- User management (Itération 1) ----
+    // Simple users (role=user) WITHOUT any admin permissions should NOT access dashboard
+    // They can still access profile and password pages
+    canAccessDashboard: (state) => {
+      const role = state.user?.role
+      if (role === 'mission_admin' || role === 'church_admin') return true
+      // For regular users, check if they have committee-based permissions
+      // Since the frontend doesn't have the full permission list, we rely on
+      // the backend. But as a heuristic, users without admin role get redirected to portal.
+      // They CAN still access /profile and /password/*
+      return false
+    },
+
+    // ---- User management ----
     canManageUsers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
 
     // ---- Church management ----
     canManageChurches: (state) => state.user?.role === 'mission_admin',
 
-    // ---- Member management (Itération 1) ----
+    // ---- Member management ----
     canViewMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
     canCreateMembers: (state) => state.user?.role === 'church_admin',
     canManageMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
     canSanctionMembers: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
     canTransferMembers: (state) => state.user?.role === 'mission_admin',
 
-    // ---- Committee management (Itération 2) ----
+    // ---- Committee management ----
     canManageCommittees: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
 
     userChurchId: (state) => state.user?.church_id || null,
@@ -95,6 +108,14 @@ export const useAuthStore = defineStore('auth', {
     passwordChanged() {
       if (this.user) {
         this.user.must_change_password = false
+        localStorage.setItem('auth_user', JSON.stringify(this.user))
+      }
+    },
+
+    // Called by the API interceptor when backend returns 403 PASSWORD_CHANGE_REQUIRED
+    flagMustChangePassword() {
+      if (this.user) {
+        this.user.must_change_password = true
         localStorage.setItem('auth_user', JSON.stringify(this.user))
       }
     },

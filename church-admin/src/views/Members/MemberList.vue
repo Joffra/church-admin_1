@@ -1,12 +1,14 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { MembersAPI } from '../../services/api'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
+const churchFilter = ref(route.query.church_id || '')
 const members = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -48,7 +50,9 @@ async function loadMembers() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await MembersAPI.list()
+    const params = {}
+    if (churchFilter.value) params.church_id = churchFilter.value
+    const { data } = await MembersAPI.list(params)
     members.value = unwrap(data)
   } catch (e) {
     error.value = e.response?.data?.message || 'Impossible de charger les membres.'
@@ -84,7 +88,19 @@ async function confirmArchive(id) {
   }
 }
 
+function clearChurchFilter() {
+  churchFilter.value = ''
+  router.replace({ query: {} })
+  loadMembers()
+}
+
 onMounted(loadMembers)
+
+// Reload when church_id query param changes (e.g. navigating from ChurchShow)
+watch(() => route.query.church_id, (newId) => {
+  churchFilter.value = newId || ''
+  loadMembers()
+})
 </script>
 
 <template>
@@ -104,7 +120,7 @@ onMounted(loadMembers)
       </RouterLink>
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
       <input
         v-model="search"
         @input="onSearchInput"
@@ -112,6 +128,10 @@ onMounted(loadMembers)
         placeholder="Rechercher par code, nom, email…"
         class="w-full max-w-sm rounded-md border border-rule bg-white px-3.5 py-2 text-sm outline-none transition focus:border-gold focus:ring-1 focus:ring-gold sm:w-72"
       />
+      <div v-if="churchFilter" class="flex items-center gap-2 rounded-md border border-rule bg-gold/5 px-3 py-2 text-xs text-ink-dark/60">
+        Filtré par église
+        <button @click="clearChurchFilter" class="text-rust/60 hover:text-rust font-bold">✕</button>
+      </div>
     </div>
 
     <p v-if="error" class="mb-4 rounded-md border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
