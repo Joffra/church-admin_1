@@ -124,9 +124,10 @@ onMounted(loadChurches)
 
     <!-- Grid -->
     <div v-else class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <article
+      <RouterLink
         v-for="church in filtered"
         :key="church.id"
+        :to="{ name: 'portal-church-detail', params: { id: church.id } }"
         class="group overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm transition hover:border-gold/40 hover:shadow-md"
       >
         <!-- Image -->
@@ -180,7 +181,7 @@ onMounted(loadChurches)
             </div>
           </div>
         </div>
-      </article>
+      </RouterLink>
     </div>
   </div>
 </template>

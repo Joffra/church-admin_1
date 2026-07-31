@@ -163,5 +163,6 @@ export const AiAssistantAPI = {
 export const PortalAPI = {
   getMission: () => api.get("/public/mission"),
   getChurches: (params) => api.get('/public/churches', { params }),
+  getChurch: (id) => api.get(`/public/churches/${id}`),
   sendContact: (data) => api.post('/public/contact', data),
 }

@@ -9,6 +9,7 @@ const routes = [
   { path: '/mission', name: 'portal-mission', component: () => import('../views/Portal/PortalMission.vue'), meta: { portal: true } },
   { path: '/eglises', name: 'portal-churches', component: () => import('../views/Portal/PortalChurches.vue'), meta: { portal: true } },
   { path: '/contact', name: 'portal-contact', component: () => import('../views/Portal/PortalContact.vue'), meta: { portal: true } },
+  { path: '/eglises/:id', name: 'portal-church-detail', component: () => import('../views/Portal/PortalChurchDetail.vue'), props: true, meta: { portal: true } },
 
   // ---- Auth ----
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
@@ -68,14 +69,17 @@ router.beforeEach((to, from) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  // 3. Already logged in → skip login page
+  // 3. Already logged in → skip login page UNLESS must_change_password is set
+  // (the login page itself handles the inline password change form)
   if (to.name === 'login') {
+    if (auth.mustChangePassword) return true  // stay on login to change password
     return { name: 'dashboard' }
   }
 
-  // 4. Force password change — block all pages except password change & profile
+  // 4. Force password change — block all admin pages, redirect to login
+  // (login page shows the inline password change form)
   if (auth.mustChangePassword && to.name !== 'password-change' && to.name !== 'profile') {
-    return { name: 'password-change' }
+    return { name: 'login' }
   }
 
   // 5. Simple users (role=user without admin permissions) CANNOT access dashboard or admin pages
