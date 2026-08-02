@@ -19,9 +19,9 @@ const routes = [
   // Own profile page — always accessible to authenticated users
   { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
   // Churches — list and detail are public to all authenticated users
-  { path: '/churches', name: 'churches', component: () => import('../views/Churches/ChurchList.vue'), meta: { requiresDashboard: true } },
+  { path: '/churches', name: 'churches', component: () => import('../views/Churches/ChurchList.vue') },
   { path: '/churches/new', name: 'church-create', component: () => import('../views/Churches/ChurchForm.vue'), meta: { requiresChurchManager: true } },
-  { path: '/churches/:id', name: 'church-show', component: () => import('../views/Churches/ChurchShow.vue'), props: true, meta: { requiresDashboard: true } },
+  { path: '/churches/:id', name: 'church-show', component: () => import('../views/Churches/ChurchShow.vue'), props: true },
   { path: '/churches/:id/edit', name: 'church-edit', component: () => import('../views/Churches/ChurchForm.vue'), props: true, meta: { requiresChurchManager: true } },
   // Members
   { path: '/members', name: 'members', component: () => import('../views/Members/MemberList.vue'), meta: { requiresMemberViewer: true } },
@@ -31,8 +31,8 @@ const routes = [
   // Users
   { path: '/users', name: 'users', component: () => import('../views/Users/UserList.vue'), meta: { requiresAdmin: true } },
   // Committees
-  { path: '/committees', name: 'committees', component: () => import('../views/Committees/CommitteeList.vue'), meta: { requiresDashboard: true } },
-  { path: '/committees/:id', name: 'committee-show', component: () => import('../views/Committees/CommitteeShow.vue'), props: true, meta: { requiresDashboard: true } },
+  { path: '/committees', name: 'committees', component: () => import('../views/Committees/CommitteeList.vue') },
+  { path: '/committees/:id', name: 'committee-show', component: () => import('../views/Committees/CommitteeShow.vue'), props: true },
   // Sanctions
   { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { requiresAdmin: true } },
   // Password management — always accessible to authenticated users
@@ -80,10 +80,9 @@ router.beforeEach((to, from) => {
     return { name: 'login' }
   }
 
-  // 5. Simple users (role=user without admin permissions) CANNOT access dashboard or admin pages
-  // They can only access /profile and /password/*
+  // 5. Dashboard route itself is restricted to admins — redirect simple users to Mon Église
   if (to.meta.requiresDashboard && !auth.canAccessDashboard) {
-    return { name: 'portal-home' }
+    return { name: 'mon-eglise' }
   }
 
   // 6. Requires mission_admin (church manager)
@@ -93,12 +92,12 @@ router.beforeEach((to, from) => {
 
   // 7. Requires admin (both mission_admin and church_admin)
   if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return { name: 'dashboard' }
+    return { name: 'mon-eglise' }
   }
 
   // 8. Requires at least admin to view member list
   if (to.meta.requiresMemberViewer && !auth.canViewMembers) {
-    return { name: 'dashboard' }
+    return { name: 'mon-eglise' }
   }
 
   // 9. Create/edit member: church_admin ONLY

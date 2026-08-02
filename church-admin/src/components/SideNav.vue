@@ -27,23 +27,25 @@ const navGroups = computed(() => {
   const groups = [
     {
       label: 'Vue d\'ensemble',
-      items: [
-        auth.isMissionAdmin
-          ? { to: '/admin', label: 'Tableau de bord' }
-          : { to: '/mon-eglise', label: 'Mon Église' },
-        ...(auth.canAccessDashboard ? [{ to: '/admin', label: 'Tableau de bord' }] : []),
-      ].filter((item, i, arr) => i === arr.findIndex(t => t.to === item.to)),
+      // mission_admin → Tableau de bord only
+      // church_admin  → Mon Église only (Dashboard redirects them anyway)
+      // user          → Mon Église only
+      items: auth.isMissionAdmin
+        ? [{ to: '/admin', label: 'Tableau de bord' }]
+        : [{ to: '/mon-eglise', label: 'Mon Église' }],
     },
     {
       label: 'Registre',
       items: [
         { to: '/churches', label: 'Églises' },
-        ...(auth.canViewMembers
-          ? [{ to: '/members', label: 'Membres' }]
-          : [{ to: '/profile', label: 'Mon profil' }]
-        ),
+        // Membres: admins only (user role is blocked by router guard anyway — keep nav clean)
+        ...(auth.canViewMembers ? [{ to: '/members', label: 'Membres' }] : []),
+        // Sanctions: admins only
         ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
+        // Comités: all authenticated users
         { to: '/committees', label: 'Comités' },
+        // Mon profil: simple users only (admins access it via avatar popup)
+        ...(auth.isSimpleUser ? [{ to: '/profile', label: 'Mon profil' }] : []),
       ],
     },
   ]
