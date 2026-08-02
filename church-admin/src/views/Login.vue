@@ -355,6 +355,18 @@ function passwordStrength(pw) {
       <p class="mt-6 text-center text-xs text-parchment/30">
         Accès réservé au personnel autorisé de l'administration.
       </p>
+
+      <div class="mt-4 text-center">
+        <RouterLink
+          to="/"
+          class="inline-flex items-center gap-1.5 text-xs text-parchment/40 transition hover:text-gold"
+        >
+          <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Retour au portail web
+        </RouterLink>
+      </div>
     </div>
   </div>
 </template>
