@@ -1,10 +1,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ChurchesAPI, EcclesiasticalTitlesAPI, MembersAPI, SanctionsAPI } from '../services/api'
 import StatCard from '../components/StatCard.vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
+
+// church_admin and simple users should use the scoped "Mon Église" view
+// Only mission_admin has the full overview dashboard
+if (!auth.isMissionAdmin) {
+  router.replace({ name: 'mon-eglise' })
+}
 const loading = ref(true)
 const error = ref('')
 
@@ -70,7 +78,7 @@ onMounted(loadStats)
       <div>
         <p class="text-xs uppercase tracking-[0.16em] text-gold capitalize">{{ today }}</p>
         <h1 class="mt-1 font-display text-3xl text-ink">Vue d'ensemble</h1>
-        <p class="mt-1 text-sm text-ink/55">Résumé du registre MECEIPH.</p>
+        <p class="mt-1 text-sm text-ink/55">Vue d'ensemble de la Mission MECEIPH.</p>
       </div>
       <button
         @click="loadStats"

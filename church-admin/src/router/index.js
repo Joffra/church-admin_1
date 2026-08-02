@@ -14,6 +14,8 @@ const routes = [
 
   // ---- Admin (auth required) ----
   { path: '/admin', name: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { requiresDashboard: true } },
+  // Mon Église — scoped church view accessible to all authenticated users
+  { path: '/mon-eglise', name: 'mon-eglise', component: () => import('../views/MyChurch.vue') },
   // Own profile page — always accessible to authenticated users
   { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
   // Churches — list and detail are public to all authenticated users

@@ -26,8 +26,11 @@ const navGroups = computed(() => {
     {
       label: 'Vue d\'ensemble',
       items: [
-        { to: '/admin', label: 'Tableau de bord' },
-      ],
+        auth.isMissionAdmin
+          ? { to: '/admin', label: 'Tableau de bord' }
+          : { to: '/mon-eglise', label: 'Mon Église' },
+        ...(auth.canAccessDashboard ? [{ to: '/admin', label: 'Tableau de bord' }] : []),
+      ].filter((item, i, arr) => i === arr.findIndex(t => t.to === item.to)),
     },
     {
       label: 'Registre',
@@ -62,6 +65,7 @@ function isActive(path) {
   if (path === '/committees') return route.path.startsWith('/committees')
   if (path === '/users') return route.path.startsWith('/users')
   if (path === '/profile') return route.path === '/profile'
+  if (path === '/mon-eglise') return route.path === '/mon-eglise'
   return route.path === path
 }
 
@@ -97,6 +101,11 @@ function goToProfile() {
 function goToPasswordChange() {
   showUserPopup.value = false
   router.push({ name: 'password-change' })
+}
+
+function goToPasswordReset() {
+  showUserPopup.value = false
+  router.push({ name: 'password-reset' })
 }
 
 async function onLogout() {
@@ -157,70 +166,6 @@ async function onLogout() {
           </li>
         </ul>
       </div>
-
-      <!-- Password section (collapsible) — always accessible -->
-      <div>
-        <button
-          @click="togglePassword"
-          class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-parchment/55 transition-colors hover:bg-white/5 hover:text-parchment"
-        >
-          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="11" width="18" height="11" rx="2" />
-            <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round" />
-          </svg>
-          <span class="flex-1 text-left">Mot de passe</span>
-          <svg
-            viewBox="0 0 24 24"
-            class="h-3.5 w-3.5 transition-transform duration-200"
-            :class="passwordExpanded ? 'rotate-90' : ''"
-            fill="none" stroke="currentColor" stroke-width="2"
-          >
-            <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-
-        <transition
-          enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-          leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-          enter-from-class="max-h-0 opacity-0"
-          enter-to-class="max-h-40 opacity-100"
-          leave-from-class="max-h-40 opacity-100"
-          leave-to-class="max-h-0 opacity-0"
-        >
-          <ul v-if="passwordExpanded" class="mt-0.5 ml-7 space-y-0.5 border-l border-white/10 pl-3">
-            <li>
-              <RouterLink
-                to="/password/change"
-                class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
-                :class="route.name === 'password-change'
-                  ? 'bg-white/10 text-parchment font-medium'
-                  : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
-              >
-                <span
-                  class="h-1.5 w-1.5 rounded-full transition-colors"
-                  :class="route.name === 'password-change' ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
-                ></span>
-                Modifier
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/password/reset"
-                class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
-                :class="route.name === 'password-reset'
-                  ? 'bg-white/10 text-parchment font-medium'
-                  : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
-              >
-                <span
-                  class="h-1.5 w-1.5 rounded-full transition-colors"
-                  :class="route.name === 'password-reset' ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
-                ></span>
-                Réinitialiser
-              </RouterLink>
-            </li>
-          </ul>
-        </transition>
-      </div>
     </nav>
 
     <div class="mx-6 border-t border-white/10"></div>
@@ -245,18 +190,27 @@ async function onLogout() {
             <p><span class="text-parchment/30">Code:</span> {{ auth.user?.member_code || '—' }}</p>
             <p><span class="text-parchment/30">Rôle:</span> {{ roleLabel(auth.user?.role) }}</p>
           </div>
-          <div class="mt-3 flex gap-2 border-t border-white/10 pt-3">
+          <div class="mt-3 space-y-1 border-t border-white/10 pt-3">
             <button
               @click="goToProfile"
-              class="flex-1 rounded-md border border-white/10 px-3 py-1.5 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
+              class="flex w-full items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
             >
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>
               Mon profil
             </button>
             <button
               @click="goToPasswordChange"
-              class="flex-1 rounded-md border border-white/10 px-3 py-1.5 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
+              class="flex w-full items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
             >
-              Sécurité
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round"/></svg>
+              Mot de passe
+            </button>
+            <button
+              @click="goToPasswordReset"
+              class="flex w-full items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
+            >
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Réinitialiser
             </button>
           </div>
         </div>
