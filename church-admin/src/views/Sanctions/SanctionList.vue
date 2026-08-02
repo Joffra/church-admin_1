@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { SanctionsAPI, MembersAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
@@ -191,6 +191,10 @@ function canLiftSanction(sanction) {
 }
 
 onMounted(loadSanctions)
+
+onUnmounted(() => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+})
 </script>
 
 <template>

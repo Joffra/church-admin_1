@@ -37,6 +37,10 @@ function onPictureChange(e) {
   const file = e.target.files[0]
   if (!file) return
   form.value.profile_picture = file
+  // Revoke previous blob URL to prevent memory leaks
+  if (picturePreview.value && picturePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(picturePreview.value)
+  }
   picturePreview.value = URL.createObjectURL(file)
 }
 

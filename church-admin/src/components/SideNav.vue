@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import logo from '../assets/logo.png'
@@ -72,6 +72,22 @@ function togglePassword() {
 function toggleUserPopup() {
   showUserPopup.value = !showUserPopup.value
 }
+
+// Close popup when clicking outside the user section
+const userSectionRef = ref(null)
+function handleOutsideClick(e) {
+  if (showUserPopup.value && userSectionRef.value && !userSectionRef.value.contains(e.target)) {
+    showUserPopup.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideClick)
+})
 
 function goToProfile() {
   showUserPopup.value = false
@@ -209,7 +225,7 @@ async function onLogout() {
 
     <div class="mx-6 border-t border-white/10"></div>
     <!-- User section with popup -->
-    <div class="relative px-6 py-4">
+    <div ref="userSectionRef" class="relative px-6 py-4">
       <!-- User popup -->
       <transition name="popup">
         <div

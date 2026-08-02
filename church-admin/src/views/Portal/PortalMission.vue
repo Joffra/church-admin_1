@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PortalAPI } from '../../services/api'
 import L from 'leaflet'
@@ -26,6 +26,16 @@ const error = ref('')
 const showMap = ref(false)
 const mapEl = ref(null)
 let mapInstance = null
+
+function escapeHtml(str) {
+  if (!str) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 function parseCoords(str) {
   if (!str) return null
@@ -74,9 +84,9 @@ function initMap() {
   churchesWithCoords.forEach(c => {
     const marker = L.marker(c.coords).addTo(mapInstance)
     const popupHtml = `<div style="min-width:180px">
-      <strong>${c.name || 'Église'}</strong><br/>
-      ${c.address ? '<span style="font-size:11px;color:#666">' + c.address + '</span><br/>' : ''}
-      ${c.pastor?.first_name ? '<span style="font-size:11px">Pasteur: ' + (c.pastor.first_name + ' ' + (c.pastor.last_name || '')).trim() + '</span>' : ''}
+      <strong>${escapeHtml(c.name) || 'Église'}</strong><br/>
+      ${c.address ? '<span style="font-size:11px;color:#666">' + escapeHtml(c.address) + '</span><br/>' : ''}
+      ${c.pastor?.first_name ? '<span style="font-size:11px">Pasteur: ' + escapeHtml((c.pastor.first_name + ' ' + (c.pastor.last_name || '')).trim()) + '</span>' : ''}
     </div>`
     marker.bindPopup(popupHtml)
   })

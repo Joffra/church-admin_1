@@ -63,6 +63,10 @@ function onImageChange(e) {
   const file = e.target.files[0]
   if (!file) return
   imageFile.value = file
+  // Revoke previous blob URL to prevent memory leaks
+  if (imagePreview.value && imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value)
+  }
   imagePreview.value = URL.createObjectURL(file)
 }
 

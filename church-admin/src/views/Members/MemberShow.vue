@@ -322,7 +322,7 @@ onMounted(loadMember)
           <div class="flex flex-wrap gap-2 sm:self-start">
             <!-- Edit -->
             <RouterLink
-              v-if="auth.canManageMembers"
+              v-if="auth.canCreateMembers"
               :to="{ name: 'member-edit', params: { id: member.id } }"
               class="rounded-md border border-rule bg-white px-3.5 py-2 text-xs font-medium text-ink-dark/70 transition hover:border-gold hover:text-ink-dark"
             >

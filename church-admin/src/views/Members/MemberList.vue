@@ -182,7 +182,7 @@ watch(() => route.query.church_id, (newId) => {
                   Voir
                 </button>
                 <button
-                  v-if="auth.canManageMembers"
+                  v-if="auth.canCreateMembers"
                   @click="goEdit(member.id)"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-dark/60 transition hover:bg-parchment-dark hover:text-ink-dark"
                 >

@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   status: { type: String, default: 'active' },
 })
 
@@ -12,18 +14,19 @@ const map = {
   sanctioned: { label: 'Sanctionné', dot: 'bg-rust', text: 'text-rust', bg: 'bg-rust/10' },
 }
 
-function styleFor(s) {
-  const key = (s || '').toLowerCase()
-  return map[key] || { label: s || 'Inconnu', dot: 'bg-ink/30', text: 'text-ink/50', bg: 'bg-ink/5' }
-}
+// Computed avoids 3x function calls per render cycle
+const style = computed(() => {
+  const key = (props.status || '').toLowerCase()
+  return map[key] || { label: props.status || 'Inconnu', dot: 'bg-ink/30', text: 'text-ink/50', bg: 'bg-ink/5' }
+})
 </script>
 
 <template>
   <span
     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
-    :class="[styleFor(status).bg, styleFor(status).text]"
+    :class="[style.bg, style.text]"
   >
-    <span class="h-1.5 w-1.5 rounded-full" :class="styleFor(status).dot"></span>
-    {{ styleFor(status).label }}
+    <span class="h-1.5 w-1.5 rounded-full" :class="style.dot"></span>
+    {{ style.label }}
   </span>
 </template>

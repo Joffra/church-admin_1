@@ -1,8 +1,9 @@
 <script setup>
+import { computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
-const user = auth.user
+const user = computed(() => auth.user)
 
 function formatGender(g) {
   if (!g) return '—'
