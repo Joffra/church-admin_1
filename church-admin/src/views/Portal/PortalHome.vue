@@ -43,13 +43,13 @@ const cards = [
           <div class="mt-10 flex flex-wrap gap-4">
             <RouterLink
               to="/mission"
-              class="rounded-md bg-gold px-6 py-3 text-sm font-semibold text-ink-dark transition hover:bg-gold-light"
+              class="portal-btn rounded-md bg-gold px-6 py-3 text-sm font-semibold text-ink-dark"
             >
               Découvrir la mission
             </RouterLink>
             <RouterLink
               to="/eglises"
-              class="rounded-md border border-parchment/30 px-6 py-3 text-sm font-semibold text-parchment transition hover:bg-white/10"
+              class="portal-btn rounded-md border border-parchment/30 px-6 py-3 text-sm font-semibold text-parchment hover:bg-white/10"
             >
               Voir les églises
             </RouterLink>

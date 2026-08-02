@@ -128,7 +128,7 @@ onMounted(loadChurches)
         v-for="church in filtered"
         :key="church.id"
         :to="{ name: 'portal-church-detail', params: { id: church.id } }"
-        class="group overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm transition hover:border-gold/40 hover:shadow-md"
+        class="church-card group overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm"
       >
         <!-- Image -->
         <div class="aspect-video overflow-hidden bg-ink/5">
@@ -136,7 +136,7 @@ onMounted(loadChurches)
             v-if="church.church_image"
             :src="churchImgUrl(church.church_image)"
             :alt="church.name"
-            class="h-full w-full object-cover transition group-hover:scale-105"
+            class="h-full w-full object-cover"
           />
           <div v-else class="flex h-full items-center justify-center">
             <svg viewBox="0 0 24 24" class="h-12 w-12 text-ink/15" fill="none" stroke="currentColor" stroke-width="1">

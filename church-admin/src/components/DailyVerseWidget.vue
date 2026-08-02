@@ -224,7 +224,7 @@ onMounted(() => {
       >
         <button
           @click="expanded = true"
-          class="group flex max-w-[280px] items-center gap-3 rounded-full border border-gold/30 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-sm transition hover:bg-white hover:border-gold/50 hover:shadow-xl"
+          class="verse-btn group flex max-w-[280px] items-center gap-3 rounded-full border border-gold/30 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-sm transition hover:bg-white hover:border-gold/50"
         >
           <!-- Book icon -->
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold transition group-hover:bg-gold group-hover:text-ink-dark">

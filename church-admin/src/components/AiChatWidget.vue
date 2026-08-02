@@ -124,7 +124,7 @@ onMounted(loadChat)
     <button
       v-show="!isOpen"
       @click="toggleChat"
-      class="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-ink-dark shadow-lg transition hover:scale-105 hover:bg-gold-light"
+      class="chat-btn widget-pulse fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-ink-dark shadow-lg"
       aria-label="Ouvrir l'assistant IA"
     >
       <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

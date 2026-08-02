@@ -86,8 +86,8 @@ async function logout() {
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="rounded-md px-3 py-2 text-sm transition-colors"
-          :class="isActive(link.to) ? 'text-gold font-medium' : 'text-parchment/70 hover:text-parchment'"
+          class="nav-link-anim rounded-md px-3 py-2 text-sm transition-colors"
+          :class="isActive(link.to) ? 'text-gold font-medium active' : 'text-parchment/70 hover:text-parchment'"
         >
           {{ link.label }}
         </RouterLink>
@@ -98,7 +98,7 @@ async function logout() {
         <!-- Not logged in -->
         <RouterLink
           v-if="!auth.isAuthenticated"
-          to="/login"
+          to="/connexion"
           class="rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark"
         >
           Connexion
@@ -106,15 +106,7 @@ async function logout() {
 
         <!-- Logged in: shortcut button + avatar dropdown -->
         <template v-else>
-          <!-- Shortcut button: Ma Mission / Mon Église -->
-          <RouterLink
-            :to="dashboardRoute()"
-            class="hidden rounded-md border border-gold/40 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold hover:text-ink-dark sm:inline-flex"
-          >
-            {{ dashboardLabel() }}
-          </RouterLink>
-
-          <!-- Avatar dropdown -->
+          <!-- Avatar dropdown (only icon shown — label is inside the dropdown) -->
           <div ref="avatarRef" class="relative">
             <button
               @click="toggleDropdown"
@@ -230,8 +222,8 @@ async function logout() {
         v-for="link in links"
         :key="link.to"
         :to="link.to"
-        class="whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors"
-        :class="isActive(link.to) ? 'text-gold font-medium' : 'text-parchment/70 hover:text-parchment'"
+        class="nav-link-anim whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors"
+        :class="isActive(link.to) ? 'text-gold font-medium active' : 'text-parchment/70 hover:text-parchment'"
       >
         {{ link.label }}
       </RouterLink>

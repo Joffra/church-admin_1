@@ -10,7 +10,10 @@ const routes = [
   { path: '/eglises/:id', name: 'portal-church-detail', component: () => import('../views/Portal/PortalChurchDetail.vue'), props: true, meta: { portal: true } },
 
   // ---- Auth ----
-  { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { public: true } },
+  // /connexion — portal-themed login for simple members (church_admin/user)
+  { path: '/connexion', name: 'login-portal', component: () => import('../views/LoginPortal.vue'), meta: { public: true } },
+  // /login — administration login for admins (mission_admin, church_admin)
+  { path: '/login', name: 'login-admin', component: () => import('../views/Login.vue'), meta: { public: true } },
 
   // ---- Admin (auth required) ----
   { path: '/admin', name: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { requiresDashboard: true } },
@@ -64,14 +67,14 @@ router.beforeEach((to, from) => {
 
   // 2. Must be authenticated for everything else
   if (!auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+    return { name: 'login-admin', query: { redirect: to.fullPath } }
   }
 
-  // 3. Already logged in → skip login page UNLESS must_change_password is set
-  // (the login page itself handles the inline password change form)
-  if (to.name === 'login') {
-    if (auth.mustChangePassword) return true  // stay on login to change password
-    return { name: 'dashboard' }
+  // 3. Already logged in → skip login pages UNLESS must_change_password
+  if (to.name === 'login-admin' || to.name === 'login-portal') {
+    if (auth.mustChangePassword) return { name: 'login-admin' }
+    if (auth.canAccessDashboard) return { name: 'dashboard' }
+    return { name: 'mon-eglise' }
   }
 
   // 4. Force password change — block all admin pages, redirect to login
