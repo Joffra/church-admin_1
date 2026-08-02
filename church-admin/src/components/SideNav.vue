@@ -59,6 +59,14 @@ const navGroups = computed(() => {
     })
   }
 
+  // Sécurité — visible to ALL authenticated users
+  groups.push({
+    label: 'Sécurité',
+    items: [
+      { to: '/password/change', label: 'Mot de passe', icon: 'lock' },
+    ],
+  })
+
   return groups
 })
 
@@ -70,6 +78,7 @@ function isActive(path) {
   if (path === '/users') return route.path.startsWith('/users')
   if (path === '/profile') return route.path === '/profile'
   if (path === '/mon-eglise') return route.path === '/mon-eglise'
+  if (path === '/password/change') return route.path.startsWith('/password')
   return route.path === path
 }
 
@@ -162,10 +171,20 @@ async function onLogout() {
                 ? 'bg-white/10 text-parchment font-medium'
                 : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
             >
-              <span
-                class="h-1.5 w-1.5 rounded-full transition-colors"
-                :class="isActive(item.to) ? 'bg-gold' : 'bg-transparent group-hover:bg-gold/50'"
-              ></span>
+              <!-- Lock icon for Sécurité items -->
+              <template v-if="item.icon === 'lock'">
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/>
+                  <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round"/>
+                </svg>
+              </template>
+              <!-- Default dot indicator -->
+              <template v-else>
+                <span
+                  class="h-1.5 w-1.5 shrink-0 rounded-full transition-colors"
+                  :class="isActive(item.to) ? 'bg-gold' : 'bg-transparent'"
+                ></span>
+              </template>
               {{ item.label }}
             </RouterLink>
           </li>
