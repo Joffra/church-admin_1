@@ -2,11 +2,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import logo from '../assets/logo.png'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const links = [
   { to: '/', label: 'Accueil' },
@@ -61,6 +63,7 @@ function initials() {
 async function logout() {
   showDropdown.value = false
   await auth.logout()
+  toast.info('Déconnecté avec succès')
   router.push({ name: 'portal-home' })
 }
 </script>

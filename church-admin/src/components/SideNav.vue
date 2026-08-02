@@ -2,11 +2,13 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import logo from '../assets/logo.png'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 function roleLabel(role) {
   if (role === 'mission_admin') return 'Admin Mission'
@@ -110,6 +112,7 @@ function goToPasswordReset() {
 
 async function onLogout() {
   await auth.logout()
+  toast.info('Déconnecté avec succès')
   router.push({ name: 'portal-home' })
 }
 </script>

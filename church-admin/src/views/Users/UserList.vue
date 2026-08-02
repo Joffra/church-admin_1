@@ -3,8 +3,10 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { UsersAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const users = ref([])
 const loading = ref(true)
@@ -104,6 +106,7 @@ async function handleSuspend() {
   try {
     await UsersAPI.suspend(suspendUser.value.id)
     successMessage.value = `L'utilisateur "${getUserName(suspendUser.value)}" a été suspendu avec succès.`
+    toast.success(`Utilisateur "${getUserName(suspendUser.value)}" suspendu avec succès`)
     suspendUser.value = null
     await fetchUsers()
   } catch (e) {
@@ -121,6 +124,7 @@ async function handleActivate() {
   try {
     await UsersAPI.activate(activateUser.value.id)
     successMessage.value = `L'utilisateur "${getUserName(activateUser.value)}" a été activé avec succès.`
+    toast.success(`Utilisateur "${getUserName(activateUser.value)}" activé avec succès`)
     activateUser.value = null
     await fetchUsers()
   } catch (e) {

@@ -2,9 +2,11 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import { AuthAPI } from '../services/api'
 
 const auth = useAuthStore()
+const toast = useToastStore()
 const router = useRouter()
 
 const isForced = computed(() => auth.mustChangePassword)
@@ -36,6 +38,7 @@ async function onSubmit() {
       form.value.new_password_confirmation,
     )
     success.value = 'Votre mot de passe a été modifié avec succès.'
+    toast.success('Mot de passe modifié avec succès')
     form.value = {
       current_password: '',
       new_password: '',

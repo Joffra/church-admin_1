@@ -2,10 +2,12 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import { AuthAPI } from '../services/api'
 import logo from '../assets/logo.png'
 
 const auth = useAuthStore()
+const toast = useToastStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -50,6 +52,7 @@ async function onSubmit() {
     const redirect = route.query.redirect
     // Prevent open redirect — only allow relative paths that don't start with //
     const safeRedirect = (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) ? redirect : '/admin'
+    toast.success('Connecté avec succès')
     router.push(safeRedirect)
   }
 }

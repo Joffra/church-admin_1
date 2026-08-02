@@ -5,6 +5,7 @@ import SideNav from './components/SideNav.vue'
 import PortalNav from './components/PortalNav.vue'
 import PortalFooter from './components/PortalFooter.vue'
 import AiChatWidget from './components/AiChatWidget.vue'
+import ToastContainer from './components/ToastContainer.vue'
 import DailyVerseWidget from './components/DailyVerseWidget.vue'
 import { useAuthStore } from './stores/auth'
 import { setPasswordChangeHandler } from './services/api'
@@ -31,7 +32,11 @@ onMounted(() => {
   <div v-if="route.meta.portal" class="flex min-h-screen flex-col bg-parchment">
     <PortalNav />
     <main class="flex-1">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </RouterView>
     </main>
     <PortalFooter />
     <!-- Floating overlays — visible on all portal pages -->
@@ -64,9 +69,15 @@ onMounted(() => {
       <!-- Page content -->
       <div class="px-8 py-8 lg:px-12">
         <div class="mx-auto max-w-6xl">
-          <RouterView />
+          <RouterView v-slot="{ Component }">
+            <Transition name="page" mode="out-in">
+              <component :is="Component" />
+            </Transition>
+          </RouterView>
         </div>
       </div>
     </main>
   </div>
+  <!-- Global toast notifications -->
+  <ToastContainer />
 </template>

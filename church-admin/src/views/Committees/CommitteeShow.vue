@@ -3,10 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { CommitteesAPI, MembersAPI, TitlesAPI, ChurchesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const committee = ref(null)
 const loading = ref(true)
@@ -120,6 +122,7 @@ async function handleAddMember() {
     })
     showAddModal.value = false
     successMessage.value = 'Membre affecté au comité avec succès.'
+    toast.success('Membre ajouté au comité avec succès')
     await loadCommittee()
   } catch (e) {
     if (e.response?.status === 422) {
@@ -143,6 +146,7 @@ async function handleRemoveMember() {
     })
     removeTarget.value = null
     successMessage.value = 'Membre retiré du comité.'
+    toast.success('Membre retiré du comité avec succès')
     await loadCommittee()
   } catch (e) {
     error.value = e.response?.data?.message || "Une erreur s'est produite lors du retrait."
@@ -178,6 +182,7 @@ async function handleEdit() {
     await CommitteesAPI.update(route.params.id, editForm.value)
     showEditModal.value = false
     successMessage.value = 'Comité mis à jour avec succès.'
+    toast.success('Comité mis à jour avec succès')
     await loadCommittee()
   } catch (e) {
     if (e.response?.status === 422) {
@@ -222,6 +227,7 @@ async function handleChangePastor() {
     await ChurchesAPI.changePastor(churchId, selectedPastorId.value)
     showPastorModal.value = false
     successMessage.value = 'Pasteur responsable changé avec succès.'
+    toast.success('Pasteur responsable changé avec succès')
     await loadCommittee()
   } catch (e) {
     pastorError.value = e.response?.data?.message || 'Impossible de changer le pasteur responsable.'

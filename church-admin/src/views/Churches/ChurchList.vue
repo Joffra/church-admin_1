@@ -4,9 +4,11 @@ import { RouterLink, useRouter } from 'vue-router'
 import { ChurchesAPI } from '../../services/api'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 const churches = ref([])
 const loading = ref(true)
 const error = ref('')

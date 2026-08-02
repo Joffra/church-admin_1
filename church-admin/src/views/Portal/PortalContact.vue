@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { PortalAPI } from '../../services/api'
+import { useToastStore } from '../../stores/toast'
 
 const form = reactive({
   first_name: '',
@@ -13,6 +14,7 @@ const form = reactive({
 const errors = ref({})
 const submitting = ref(false)
 const success = ref(false)
+const toast = useToastStore()
 
 function validate() {
   const e = {}
@@ -36,6 +38,7 @@ async function submit() {
   try {
     await PortalAPI.sendContact({ ...form })
     success.value = true
+    toast.success('Message envoyé avec succès')
     Object.keys(form).forEach(k => form[k] = '')
   } catch (err) {
     if (err.response?.status === 422 && err.response.data?.errors) {

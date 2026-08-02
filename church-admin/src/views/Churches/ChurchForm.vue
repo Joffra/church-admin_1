@@ -3,11 +3,13 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChurchesAPI, MembersAPI, EcclesiasticalTitlesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 import MapPicker from '../../components/MapPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)

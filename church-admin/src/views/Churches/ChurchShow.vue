@@ -3,12 +3,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { ChurchesAPI, MembersAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 import StatusBadge from '../../components/StatusBadge.vue'
 import MapPicker from '../../components/MapPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 const church = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -63,6 +65,7 @@ async function toggleStatus() {
     const updated = data.data ?? data
     if (church.value.structure) church.value.structure.status = updated.structure?.status ?? newStatus
     else church.value.status = newStatus
+    toast.success('Statut modifié avec succès')
   } catch (e) {
     error.value = e.response?.data?.message || 'Impossible de changer le statut.'
   } finally {

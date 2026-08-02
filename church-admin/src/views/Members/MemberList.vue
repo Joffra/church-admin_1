@@ -4,10 +4,12 @@ import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { MembersAPI } from '../../services/api'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const toast = useToastStore()
 const churchFilter = ref(route.query.church_id || '')
 const members = ref([])
 const loading = ref(true)

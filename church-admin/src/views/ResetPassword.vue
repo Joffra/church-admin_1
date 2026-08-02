@@ -134,7 +134,8 @@ async function onVerifyCode() {
     stopCountdown()
     setTimeout(() => {
       auth.logout()
-      router.push({ name: 'login' })
+      toast.success('Mot de passe réinitialisé avec succès')
+  router.push({ name: 'login' })
     }, 3500)
   } catch (e) {
     if (e.response?.status === 422 && e.response.data?.errors) {

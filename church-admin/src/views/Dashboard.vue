@@ -92,7 +92,7 @@ onMounted(loadStats)
       {{ error }}
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 fade-in-up">
       <StatCard label="Églises" :value="stats.churches" :loading="loading" hint="Congrégations" accent="gold" />
       <StatCard label="Églises actives" :value="stats.churchesActive" :loading="loading" hint="Statut actif" accent="sage" />
       <StatCard label="Membres" :value="stats.members" :loading="loading" hint="Membres enregistrés" accent="gold" />

@@ -3,10 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MembersAPI, EcclesiasticalTitlesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const props = defineProps({ id: String })
 const isEdit = computed(() => !!props.id)
@@ -75,9 +77,11 @@ async function onSubmit() {
     if (isEdit.value) {
       await MembersAPI.updateForm(props.id, fd)
       success.value = 'Membre modifié avec succès.'
+    toast.success('Membre modifié avec succès')
     } else {
       await MembersAPI.createForm(fd)
       success.value = 'Membre ajouté avec succès.'
+    toast.success('Membre ajouté avec succès')
     }
     setTimeout(() => router.push({ name: 'members' }), 1200)
   } catch (e) {

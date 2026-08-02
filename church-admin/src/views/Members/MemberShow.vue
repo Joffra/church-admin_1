@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { MembersAPI, ChurchesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useToastStore } from '../../stores/toast'
 import StatusBadge from '../../components/StatusBadge.vue'
 
 const props = defineProps({
@@ -14,6 +15,7 @@ const props = defineProps({
 
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 // State
 const member = ref(null)
