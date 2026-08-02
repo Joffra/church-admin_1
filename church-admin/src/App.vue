@@ -47,9 +47,25 @@ onMounted(() => {
   <!-- Admin layout (SideNav) -->
   <div v-else class="flex min-h-screen bg-parchment">
     <SideNav />
-    <main class="flex-1 overflow-y-auto px-8 py-8 lg:px-12">
-      <div class="mx-auto max-w-6xl">
-        <RouterView />
+    <main class="flex-1 overflow-y-auto">
+      <!-- Slim top bar with portal return button -->
+      <div class="sticky top-0 z-30 border-b border-rule bg-white/80 px-6 py-2.5 backdrop-blur md:px-10 lg:px-12">
+        <RouterLink
+          to="/"
+          class="inline-flex items-center gap-2 rounded-md border border-rule px-3 py-1.5 text-xs font-medium text-ink/55 transition hover:border-gold hover:text-ink"
+        >
+          <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Retour au portail web
+        </RouterLink>
+      </div>
+
+      <!-- Page content -->
+      <div class="px-8 py-8 lg:px-12">
+        <div class="mx-auto max-w-6xl">
+          <RouterView />
+        </div>
       </div>
     </main>
   </div>
