@@ -1,6 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from '../views/Dashboard.vue'
-import Login from '../views/Login.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
@@ -12,10 +10,10 @@ const routes = [
   { path: '/eglises/:id', name: 'portal-church-detail', component: () => import('../views/Portal/PortalChurchDetail.vue'), props: true, meta: { portal: true } },
 
   // ---- Auth ----
-  { path: '/login', name: 'login', component: Login, meta: { public: true } },
+  { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { public: true } },
 
   // ---- Admin (auth required) ----
-  { path: '/admin', name: 'dashboard', component: Dashboard, meta: { requiresDashboard: true } },
+  { path: '/admin', name: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { requiresDashboard: true } },
   // Own profile page — always accessible to authenticated users
   { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
   // Churches — list and detail are public to all authenticated users
@@ -51,8 +49,6 @@ const router = createRouter({
 router.afterEach((to) => {
   if (to.meta.portal) {
     document.title = 'MECEIPH.portail web'
-  } else if (to.meta.public) {
-    document.title = 'MECEIPH.administration'
   } else {
     document.title = 'MECEIPH.administration'
   }

@@ -37,10 +37,6 @@ export const useAuthStore = defineStore('auth', {
     canAccessDashboard: (state) => {
       const role = state.user?.role
       if (role === 'mission_admin' || role === 'church_admin') return true
-      // For regular users, check if they have committee-based permissions
-      // Since the frontend doesn't have the full permission list, we rely on
-      // the backend. But as a heuristic, users without admin role get redirected to portal.
-      // They CAN still access /profile and /password/*
       return false
     },
 
@@ -77,10 +73,14 @@ export const useAuthStore = defineStore('auth', {
         return true
       } catch (e) {
         if (e.response?.status === 422 || e.response?.status === 400) {
-          this.error =
-            e.response.data?.message ||
-            e.response.data?.errors?.message?.[0] ||
-            'Identifiants incorrects.'
+          // Robustly extract Laravel validation messages
+          const resData = e.response.data
+          if (resData?.errors) {
+            const firstField = Object.keys(resData.errors)[0]
+            this.error = resData.errors[firstField]?.[0] || resData.message || 'Identifiants incorrects.'
+          } else {
+            this.error = resData?.message || 'Identifiants incorrects.'
+          }
         } else if (e.response?.data?.message) {
           this.error = e.response.data.message
         } else {
@@ -117,6 +117,31 @@ export const useAuthStore = defineStore('auth', {
       if (this.user) {
         this.user.must_change_password = true
         localStorage.setItem('auth_user', JSON.stringify(this.user))
+      }
+    },
+
+    // Called when the 401 interceptor fires — clears Pinia state to stay in sync
+    handleTokenExpired() {
+      this.token = null
+      this.user = null
+    },
+
+    // Re-validate the session on app boot by fetching /user from the backend
+    async initAuth() {
+      if (!this.token) return
+      try {
+        const { data } = await AuthAPI.me()
+        const userData = data.data ?? data
+        if (userData) {
+          this.user = userData
+          localStorage.setItem('auth_user', JSON.stringify(userData))
+        }
+      } catch {
+        // Token is invalid/expired — clear everything
+        this.token = null
+        this.user = null
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_user')
       }
     },
   },

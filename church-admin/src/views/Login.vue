@@ -47,8 +47,10 @@ async function onSubmit() {
       return
     }
 
-    const redirect = route.query.redirect || '/admin'
-    router.push(redirect)
+    const redirect = route.query.redirect
+    // Prevent open redirect — only allow relative paths that don't start with //
+    const safeRedirect = (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) ? redirect : '/admin'
+    router.push(safeRedirect)
   }
 }
 

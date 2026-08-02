@@ -25,8 +25,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear both localStorage AND Pinia state to keep UI in sync
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
+      // Dispatch a custom event so the auth store can react
+      window.dispatchEvent(new CustomEvent('auth:expired'))
     }
     // Backend's check.password.change middleware returns 403 with PASSWORD_CHANGE_REQUIRED
     if (error.response?.status === 403 && error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
@@ -38,7 +41,9 @@ api.interceptors.response.use(
           user.must_change_password = true
           localStorage.setItem('auth_user', JSON.stringify(user))
         }
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to update auth_user in localStorage:', e.message)
+      }
       // Notify the app to redirect
       if (onPasswordChangeRequired) onPasswordChangeRequired()
     }
