@@ -59,14 +59,6 @@ const navGroups = computed(() => {
     })
   }
 
-  // Sécurité — visible to ALL authenticated users
-  groups.push({
-    label: 'Sécurité',
-    items: [
-      { to: '/password/change', label: 'Mot de passe', icon: 'lock' },
-    ],
-  })
-
   return groups
 })
 
@@ -191,6 +183,23 @@ async function onLogout() {
         </ul>
       </div>
     </nav>
+
+    <!-- Password shortcut — sits just above the user row -->
+    <div class="px-3 pb-1">
+      <RouterLink
+        to="/password/change"
+        class="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors"
+        :class="isActive('/password/change')
+          ? 'bg-white/10 text-parchment font-medium'
+          : 'text-parchment/45 hover:bg-white/5 hover:text-parchment/80'"
+      >
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round"/>
+        </svg>
+        Mot de passe
+      </RouterLink>
+    </div>
 
     <div class="mx-6 border-t border-white/10"></div>
     <!-- User section with popup -->
