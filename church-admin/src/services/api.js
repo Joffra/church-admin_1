@@ -63,6 +63,8 @@ export const AuthAPI = {
     api.post('/password/update', { current_password, new_password, new_password_confirmation }),
   sendResetCode: (email) => api.post('/password/reset/code', { email }),
   verifyResetCode: (email, code) => api.post('/password/reset/code/verify', { email, code }),
+  // Self-update profile (email, phone, address) — backend needs PUT /user/profile
+  updateProfile: (data) => api.put('/user/profile', data),
 }
 
 // ---- Churches ----
