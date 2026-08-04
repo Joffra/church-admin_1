@@ -258,20 +258,58 @@ async function onLogout() {
         </button>
       </div>
 
-      <!-- Mot de passe — below the user row -->
-      <RouterLink
-        to="/password/change"
-        class="mt-2 flex items-center gap-2.5 rounded-md px-3 py-1.5 text-xs transition-colors"
-        :class="isActive('/password/change')
-          ? 'text-gold font-medium'
-          : 'text-parchment/40 hover:text-parchment/70'"
-      >
-        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8">
-          <rect x="3" y="11" width="18" height="11" rx="2"/>
-          <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round"/>
-        </svg>
-        Mot de passe
-      </RouterLink>
+      <!-- Mot de passe — collapsible section below the user row -->
+      <div class="mt-2">
+        <!-- Header: click to toggle -->
+        <button
+          @click="togglePassword"
+          class="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-xs transition-colors"
+          :class="isActive('/password/change')
+            ? 'text-gold font-medium'
+            : 'text-parchment/40 hover:text-parchment/70'"
+        >
+          <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round"/>
+          </svg>
+          <span class="flex-1 text-left">Mot de passe</span>
+          <!-- Chevron -->
+          <svg
+            viewBox="0 0 24 24"
+            class="h-3 w-3 shrink-0 transition-transform duration-200"
+            :class="passwordExpanded ? 'rotate-180' : ''"
+            fill="none" stroke="currentColor" stroke-width="2"
+          >
+            <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Sub-items: hidden until expanded -->
+        <transition name="pwd-expand">
+          <div v-if="passwordExpanded" class="mt-0.5 ml-4 space-y-0.5 border-l border-white/10 pl-2">
+            <RouterLink
+              to="/password/change"
+              class="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-colors"
+              :class="route.path === '/password/change'
+                ? 'text-gold font-medium'
+                : 'text-parchment/35 hover:text-parchment/60'"
+            >
+              <span class="h-1 w-1 shrink-0 rounded-full" :class="route.path === '/password/change' ? 'bg-gold' : 'bg-parchment/20'"></span>
+              Modifier
+            </RouterLink>
+            <RouterLink
+              to="/password/reset"
+              class="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-colors"
+              :class="route.path === '/password/reset'
+                ? 'text-gold font-medium'
+                : 'text-parchment/35 hover:text-parchment/60'"
+            >
+              <span class="h-1 w-1 shrink-0 rounded-full" :class="route.path === '/password/reset' ? 'bg-gold' : 'bg-parchment/20'"></span>
+              Réinitialiser
+            </RouterLink>
+          </div>
+        </transition>
+      </div>
     </div>
   </aside>
 </template>
@@ -285,5 +323,21 @@ async function onLogout() {
 .popup-leave-to {
   opacity: 0;
   transform: translateY(10px);
+}
+
+.pwd-expand-enter-active,
+.pwd-expand-leave-active {
+  transition: all 0.18s ease;
+  overflow: hidden;
+}
+.pwd-expand-enter-from,
+.pwd-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+.pwd-expand-enter-to,
+.pwd-expand-leave-from {
+  opacity: 1;
+  max-height: 80px;
 }
 </style>
