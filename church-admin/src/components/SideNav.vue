@@ -160,7 +160,7 @@ async function onLogout() {
               :to="item.to"
               class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
               :class="isActive(item.to)
-                ? 'bg-white/10 text-parchment font-medium'
+                ? 'bg-white/10 text-parchment font-medium hover:bg-white/15 hover:text-gold transition-colors'
                 : 'text-parchment/55 hover:bg-white/5 hover:text-parchment'"
             >
               <!-- Lock icon for Sécurité items -->

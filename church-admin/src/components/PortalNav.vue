@@ -87,7 +87,7 @@ async function logout() {
           :key="link.to"
           :to="link.to"
           class="nav-link-anim rounded-md px-3 py-2 text-sm transition-colors"
-          :class="isActive(link.to) ? 'text-gold font-medium active' : 'text-parchment/70 hover:text-parchment'"
+          :class="isActive(link.to) ? 'text-gold font-medium active hover:text-gold-light transition-colors' : 'text-parchment/70 hover:text-parchment'"
         >
           {{ link.label }}
         </RouterLink>
@@ -223,7 +223,7 @@ async function logout() {
         :key="link.to"
         :to="link.to"
         class="nav-link-anim whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors"
-        :class="isActive(link.to) ? 'text-gold font-medium active' : 'text-parchment/70 hover:text-parchment'"
+        :class="isActive(link.to) ? 'text-gold font-medium active hover:text-gold-light transition-colors' : 'text-parchment/70 hover:text-parchment'"
       >
         {{ link.label }}
       </RouterLink>
