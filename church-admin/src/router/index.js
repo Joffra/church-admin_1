@@ -38,6 +38,8 @@ const routes = [
   { path: '/committees/:id', name: 'committee-show', component: () => import('../views/Committees/CommitteeShow.vue'), props: true },
   // Sanctions
   { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { requiresAdmin: true } },
+  // Knowledge base — documents used by the AI chatbot (RAG). Mission admin / Bishop only.
+  { path: '/knowledge-files', name: 'knowledge-files', component: () => import('../views/KnowledgeFiles/KnowledgeFileList.vue'), meta: { requiresKnowledgeManager: true } },
   // Password management — always accessible to authenticated users
   { path: '/password/change', name: 'password-change', component: () => import('../views/ChangePassword.vue') },
   { path: '/password/reset', name: 'password-reset', component: () => import('../views/ResetPassword.vue'), meta: { public: true } },
@@ -106,6 +108,11 @@ router.beforeEach((to, from) => {
   // 9. Create/edit member: church_admin ONLY
   if (to.meta.requiresChurchAdmin && !auth.canCreateMembers) {
     return { name: 'members' }
+  }
+
+  // 9b. Knowledge base management: mission_admin or Bishop only
+  if (to.meta.requiresKnowledgeManager && !auth.canManageKnowledgeBase) {
+    return { name: 'dashboard' }
   }
 
   // 10. Member detail page: admins only

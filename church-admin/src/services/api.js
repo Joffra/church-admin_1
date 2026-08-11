@@ -173,3 +173,33 @@ export const PortalAPI = {
   getChurch: (id) => api.get(`/public/churches/${id}`),
   sendContact: (data) => api.post('/public/contact', data),
 }
+
+// ---- Knowledge Base Files (RAG documents — Admin Mission / Évêque only) ----
+// Backend uses the filename as the route key (not the numeric id), so every
+// call below builds the URL from the filename. Filenames are URL-encoded to
+// safely handle spaces or accents.
+
+export const KnowledgeFilesAPI = {
+  list: () => api.get('/knowledge-files'),
+  upload: (file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post('/knowledge-files', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  rename: (filename, newFilename) =>
+    api.put(`/knowledge-files/${encodeURIComponent(filename)}`, { filename: newFilename }),
+  remove: (filename) => api.delete(`/knowledge-files/${encodeURIComponent(filename)}`),
+  // The backend's `show` route requires the Sanctum bearer token, so a plain
+  // <iframe src="..."> would get a 401 (browsers don't attach the header on
+  // simple navigations). We fetch the file as a blob through axios instead —
+  // the request interceptor still attaches the token — and hand back an
+  // object URL the caller can drop into an <iframe>/<embed>.
+  previewBlobUrl: async (filename) => {
+    const response = await api.get(`/knowledge-files/${encodeURIComponent(filename)}`, {
+      responseType: 'blob',
+    })
+    return URL.createObjectURL(response.data)
+  },
+}

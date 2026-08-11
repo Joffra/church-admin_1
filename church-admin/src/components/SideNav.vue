@@ -50,12 +50,16 @@ const navGroups = computed(() => {
     },
   ]
 
-  if (auth.canManageUsers) {
+  const adminItems = [
+    ...(auth.canManageUsers ? [{ to: '/users', label: 'Utilisateurs' }] : []),
+    // Base de connaissance IA : Admin Mission / Évêque uniquement
+    ...(auth.canManageKnowledgeBase ? [{ to: '/knowledge-files', label: 'Base de connaissance IA' }] : []),
+  ]
+
+  if (adminItems.length) {
     groups.push({
       label: 'Administration',
-      items: [
-        { to: '/users', label: 'Utilisateurs' },
-      ],
+      items: adminItems,
     })
   }
 
@@ -68,6 +72,7 @@ function isActive(path) {
   if (path === '/sanctions') return route.path.startsWith('/sanctions')
   if (path === '/committees') return route.path.startsWith('/committees')
   if (path === '/users') return route.path.startsWith('/users')
+  if (path === '/knowledge-files') return route.path.startsWith('/knowledge-files')
   if (path === '/profile') return route.path === '/profile'
   if (path === '/mon-eglise') return route.path === '/mon-eglise'
   if (path === '/password/change') return route.path.startsWith('/password')

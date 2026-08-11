@@ -56,6 +56,14 @@ export const useAuthStore = defineStore('auth', {
     // ---- Committee management ----
     canManageCommittees: (state) => ['mission_admin', 'church_admin'].includes(state.user?.role),
 
+    // ---- Knowledge base (RAG documents used by the AI chatbot) ----
+    // Backend Gate 'manage-knowledge-base' allows mission_admin OR the Bishop
+    // (member->isBishop()) OR anyone holding the 'knowledge:manage' permission
+    // via a committee title. The login/user payload doesn't expose an
+    // is_bishop flag today, so a Bishop who isn't also mission_admin won't
+    // see this menu until the backend adds that field — flagged to the team.
+    canManageKnowledgeBase: (state) => state.user?.role === 'mission_admin' || !!state.user?.is_bishop,
+
     userChurchId: (state) => state.user?.church_id || null,
     userMemberId: (state) => state.user?.member_id || null,
   },
