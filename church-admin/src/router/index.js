@@ -40,6 +40,8 @@ const routes = [
   { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { requiresAdmin: true } },
   // Knowledge base — documents used by the AI chatbot (RAG). Mission admin / Bishop only.
   { path: '/knowledge-files', name: 'knowledge-files', component: () => import('../views/KnowledgeFiles/KnowledgeFileList.vue'), meta: { requiresKnowledgeManager: true } },
+  // Debug: raw JSON from /api/permissions
+  { path: '/debug/permissions', name: 'debug-permissions', component: () => import('../views/Permissions/PermissionDebug.vue'), meta: {} },
   // Password management — always accessible to authenticated users
   { path: '/password/change', name: 'password-change', component: () => import('../views/ChangePassword.vue') },
   { path: '/password/reset', name: 'password-reset', component: () => import('../views/ResetPassword.vue'), meta: { public: true } },
