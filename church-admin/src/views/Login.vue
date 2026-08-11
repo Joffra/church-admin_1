@@ -43,6 +43,11 @@ async function onSubmit() {
       return
     }
 
+    // The success toast must fire for EVERY authenticated user, not just
+    // admins — it was previously only called in the branch below, so a
+    // simple 'user' role account (no dashboard access) never saw it.
+    toast.success('Connecté avec succès')
+
     // If user is a simple user (no admin access), redirect to portal
     if (!auth.canAccessDashboard) {
       router.push({ name: 'portal-home' })
@@ -52,7 +57,6 @@ async function onSubmit() {
     const redirect = route.query.redirect
     // Prevent open redirect — only allow relative paths that don't start with //
     const safeRedirect = (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) ? redirect : '/admin'
-    toast.success('Connecté avec succès')
     router.push(safeRedirect)
   }
 }
