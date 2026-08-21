@@ -128,7 +128,7 @@ async function onLogout() {
 </script>
 
 <template>
-  <aside class="flex h-full w-64 shrink-0 flex-col bg-ink lg:h-auto">
+  <aside class="flex h-full w-64 shrink-0 flex-col bg-ink lg:h-screen">
     <!-- Mobile close button -->
     <button @click="$emit('close')" class="absolute right-2 top-2 rounded-md p-1.5 text-parchment/40 hover:bg-white/10 hover:text-parchment lg:hidden" aria-label="Fermer">
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18L18 6" stroke-linecap="round"/></svg>

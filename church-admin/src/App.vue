@@ -74,7 +74,7 @@ onMounted(() => {
     <!-- Sidebar — fixed drawer on mobile, static on desktop -->
     <div
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-      class="fixed z-50 h-full transition-transform duration-200 lg:static lg:translate-x-0 lg:z-auto"
+      class="fixed z-50 h-full transition-transform duration-200 lg:static lg:h-screen lg:translate-x-0 lg:z-auto"
     >
       <SideNav />
     </div>
