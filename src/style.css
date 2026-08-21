@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@plugin "flowbite/plugin";
+@source "../node_modules/flowbite-vue/dist";
+@source "../node_modules/flowbite";
+
+@theme {
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --color-ink: #1b4a82;
+  --color-ink-light: #234f8a;
+  --color-ink-dark: #123356;
+  --color-parchment: #f4f6fa;
+  --color-parchment-dark: #e6ecf5;
+  --color-gold: #c9a227;
+  --color-gold-light: #e8c84a;
+  --color-rule: #d8e0ee;
+  --color-sage: #2f8f5b;
+  --color-rust: #b3433a;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-parchment);
+    color: var(--color-ink-dark);
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+.ledger-rule {
+  border-top: 1px solid var(--color-rule);
+}
+
+.brand-logo {
+  filter: brightness(0) invert(1);
+}
+
