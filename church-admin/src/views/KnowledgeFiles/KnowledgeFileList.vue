@@ -264,7 +264,7 @@ onUnmounted(revokePreviewUrl)
     </p>
 
     <!-- Files table -->
-    <div class="overflow-hidden rounded-lg border border-rule bg-white">
+    <div class="overflow-x-auto rounded-lg border border-rule bg-white">
       <table class="w-full text-left text-sm">
         <thead>
           <tr class="border-b border-rule bg-parchment-dark/40 text-[11px] uppercase tracking-wide text-ink-dark/45">

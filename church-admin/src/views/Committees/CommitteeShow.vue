@@ -81,6 +81,16 @@ async function loadCommittee() {
   }
 }
 
+// Preload members list in the background (used by add modal later)
+const preloadedMembers = ref([])
+onMounted(async () => {
+  loadCommittee()
+  try {
+    const { data } = await MembersAPI.list()
+    preloadedMembers.value = Array.isArray(data) ? data : (data.data ?? [])
+  } catch { /* silent — will reload in modal if needed */ }
+})
+
 async function openAddModal() {
   showAddModal.value = true
   addForm.value = { member_id: '', title_id: '' }
@@ -236,7 +246,7 @@ async function handleChangePastor() {
   }
 }
 
-onMounted(loadCommittee)
+
 </script>
 
 <template>
@@ -294,7 +304,7 @@ onMounted(loadCommittee)
       </div>
 
       <!-- Members table -->
-      <div class="overflow-hidden rounded-lg border border-rule bg-white">
+      <div class="overflow-x-auto rounded-lg border border-rule bg-white">
         <table class="w-full text-left text-sm">
           <thead>
             <tr class="border-b border-rule bg-parchment-dark/40 text-[11px] uppercase tracking-wide text-ink-dark/45">

@@ -220,11 +220,11 @@ onMounted(() => {
     <transition name="verse-fade">
       <div
         v-if="verse && !loading && !expanded"
-        class="fixed bottom-6 left-6 z-40"
+        class="fixed bottom-4 left-4 z-40"
       >
         <button
           @click="expanded = true"
-          class="verse-btn group flex max-w-[280px] items-center gap-3 rounded-full border border-gold/30 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-sm transition hover:bg-white hover:border-gold/50"
+          class="verse-btn group flex max-w-[260px] items-center gap-3 rounded-full border border-gold/30 bg-white/90 px-3 py-2 shadow-lg backdrop-blur-sm transition hover:bg-white hover:border-gold/50 sm:max-w-[280px] sm:px-4 sm:py-2.5"
         >
           <!-- Book icon -->
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold transition group-hover:bg-gold group-hover:text-ink-dark">
@@ -244,7 +244,7 @@ onMounted(() => {
     <transition name="verse-expand">
       <div
         v-if="verse && expanded"
-        class="fixed bottom-6 left-6 z-40 w-[20rem] max-w-[calc(100vw-3rem)] rounded-2xl border border-gold/20 bg-white shadow-2xl overflow-hidden"
+        class="fixed bottom-4 left-4 z-40 w-[18rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-gold/20 bg-white shadow-2xl overflow-hidden sm:w-[20rem] sm:bottom-6 sm:left-6 sm:max-w-[calc(100vw-3rem)]"
       >
         <!-- Header bar -->
         <div class="flex items-center justify-between bg-ink px-4 py-3">
@@ -310,7 +310,7 @@ onMounted(() => {
     <transition name="verse-fade">
       <div
         v-if="loading"
-        class="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full border border-gold/30 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-sm"
+        class="fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full border border-gold/30 bg-white/90 px-3 py-2 shadow-lg backdrop-blur-sm sm:bottom-6 sm:left-6 sm:px-4 sm:py-2.5"
       >
         <svg class="h-4 w-4 animate-spin text-gold" viewBox="0 0 24 24" fill="none">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />

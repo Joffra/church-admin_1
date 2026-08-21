@@ -6,9 +6,6 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet default marker icon paths (broken in Vite)
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
 // @ts-ignore - Leaflet internal icon config
 delete L.Icon.Default.prototype._getIconUrl
@@ -284,7 +281,7 @@ onUnmounted(() => {
         <!-- Map showing all churches -->
         <transition name="map-fade">
           <div v-if="showMap" class="mt-6 overflow-hidden rounded-xl border border-ink/10 shadow-md">
-            <div ref="mapEl" class="h-96 w-full"></div>
+            <div ref="mapEl" class="h-64 w-full sm:h-96"></div>
           </div>
         </transition>
 
