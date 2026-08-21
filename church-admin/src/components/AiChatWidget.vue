@@ -83,9 +83,17 @@ async function sendMessage() {
       .map(m => ({ role: m.role, content: m.content }))
 
     const { data } = await AiAssistantAPI.chat(content, history)
-    const reply = data.data?.answer || data.answer || data.data?.reply || data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.'
+    const answer = data.data?.answer || data.answer || data.data?.reply || data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.'
+    const sources = data.data?.sources || data.sources || null
 
-    messages.value.push({ role: 'assistant', content: reply })
+    // If sources exist, append them as a formatted footer
+    let fullContent = answer
+    if (sources && Array.isArray(sources) && sources.length > 0) {
+      const sourceList = sources.map(s => s.title || s).join(', ')
+      fullContent += '\n\n*Sources : ' + sourceList + '*'
+    }
+
+    messages.value.push({ role: 'assistant', content: fullContent })
     saveChat()
     nextTick(scrollToBottom)
   } catch (e) {
@@ -116,6 +124,68 @@ function clearChat() {
 }
 
 onMounted(loadChat)
+
+// ---- Markdown-like text formatter ----
+// Renders AI responses with paragraphs, bold, italic, lists, and line breaks
+// without any external dependency. Escapes HTML first for safety.
+function formatMessage(text) {
+  if (!text) return ''
+  
+  // Escape HTML to prevent injection
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
+  // Split into blocks by double newline (paragraph separator)
+  const blocks = html.split(/\n\n+/)
+  const formattedBlocks = blocks.map(block => {
+    const trimmed = block.trim()
+    if (!trimmed) return ''
+    
+    // Detect bullet list (lines starting with - or *)
+    if (/^(\s*[-*]\s+.+)\n?(\s*[-*]\s+.+)*/m.test(trimmed) && trimmed.match(/^\s*[-*]\s+/m)) {
+      const items = trimmed.split(/\n/).filter(l => l.trim()).map(line => {
+        const item = line.replace(/^\s*[-*]\s+/, '').trim()
+        return `<li>${formatInline(item)}</li>`
+      })
+      return `<ul class="ml-4 mt-1 space-y-1 list-disc list-outside">${items.join('')}</ul>`
+    }
+    
+    // Detect numbered list (1. 2. etc)
+    if (/^\s*\d+[.)]\s+.+/m.test(trimmed)) {
+      const items = trimmed.split(/\n/).filter(l => l.trim()).map(line => {
+        const item = line.replace(/^\s*\d+[.)]\s+/, '').trim()
+        return `<li>${formatInline(item)}</li>`
+      })
+      return `<ol class="ml-4 mt-1 space-y-1 list-decimal list-outside">${items.join('')}</ol>`
+    }
+    
+    // Regular paragraph — preserve single line breaks
+    const lines = trimmed.split(/\n/).map(l => formatInline(l.trim())).filter(l => l)
+    return `<p class="leading-relaxed">${lines.join('<br/>')}</p>`
+  })
+  
+  return formattedBlocks.filter(b => b).join('')
+}
+
+function formatInline(text) {
+  return text
+    // Bold: **text** or __text__
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    // Italic: *text* or _text_ (but not ** which is bold)
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, '<em>$1</em>')
+    // Inline code: `text`
+    .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-ink-dark/5 text-xs">$1</code>')
+    // Bible references like "Jean 3:16" — make them subtle but distinct
+    .replace(/\b(\d+\s*[A-Z][a-zéèêàâïîôöûüç]+(?:\s[A-Z][a-zéèêàâïîôöûüç]+)?\s*\d+:\d+(?:-\d+)?|\b(?:Gen|Ex|Lev|Nomb|Deut|Jos|Jug|Ruth|1\s*Sam|2\s*Sam|1\s*Rois|2\s*Rois|1\s*Chron|2\s*Chron|Esd|Neh|Esth|Job|Ps|Prov|Eccl|Cant|Esa|Jer|Lam|Ez|Dan|Os|Joe|Am|Abd|Jon|Mic|Nah|Hab|Soph|Agg|Zach|Mal|Matt|Marc|Luc|Jean|Act|Rom|1\s*Cor|2\s*Cor|Gal|Eph|Phil|Col|1\s*Thess|2\s*Thess|1\s*Tim|2\s*Tim|Tit|Phil|Heb|Jac|1\s*Pierre|2\s*Pierre|1\s*Jean|2\s*Jean|3\s*Jean|Jude|Apoc)\s+\d+:\d+(?:-\d+)?)/g, 
+      '<span class="font-semibold text-gold-dark">$1</span>')
+}
+
+// Expose to template
+defineExpose({ formatMessage })
 </script>
 
 <template>
@@ -183,12 +253,17 @@ onMounted(loadChat)
             :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
           >
             <div
-              class="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm"
+              class="max-w-[85%] rounded-2xl px-4 py-3 text-sm"
               :class="msg.role === 'user'
                 ? 'bg-gold text-ink-dark rounded-br-sm'
                 : 'bg-white border border-rule text-ink-dark rounded-bl-sm shadow-sm'"
             >
-              {{ msg.content }}
+              <template v-if="msg.role === 'assistant'">
+                <div class="chat-content space-y-2" v-html="formatMessage(msg.content)"></div>
+              </template>
+              <template v-else>
+                <p class="leading-relaxed whitespace-pre-wrap">{{ msg.content }}</p>
+              </template>
             </div>
           </div>
 
@@ -258,6 +333,13 @@ onMounted(loadChat)
 .chat-slide-leave-active {
   transition: all 0.3s ease;
 }
+.chat-content p { margin-bottom: 0.5rem; }
+.chat-content p:last-child { margin-bottom: 0; }
+.chat-content ul, .chat-content ol { margin-top: 0.25rem; margin-bottom: 0.5rem; }
+.chat-content li { margin-bottom: 0.15rem; }
+.chat-content strong { font-weight: 600; }
+.chat-content code { font-family: monospace; }
+
 .chat-slide-enter-from,
 .chat-slide-leave-to {
   opacity: 0;
