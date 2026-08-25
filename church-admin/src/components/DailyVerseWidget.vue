@@ -107,51 +107,24 @@ function incrementChangeCount() {
 const remainingChanges = computed(() => MAX_CHANGES_PER_DAY - getChangeCountToday())
 
 // ---- API ----
-// The backend embeds mood + topics into the system prompt (not a user message).
-// This means the same theme produces an identical prompt → same verse every time.
-//
-// Frontend-only workaround: we append the exclusion list and a random nonce
-// INTO the mood field. This makes the system prompt different each request
-// AND instructs the AI to avoid previously shown verses.
+// Backend handles verse variety via random seed + temperature 1.0.
+// Frontend just sends clean mood/topics.
 async function fetchVerse(mood, topics) {
   loading.value = true
   error.value = ''
-  // Clear current verse immediately so the user sees it's loading a new one
   verse.value = null
 
   try {
-    // Build the effective mood: user's mood + exclusion instructions + nonce
-    // We keep the ORIGINAL clean mood separately so we only display that in the UI
-    const originalMood = mood || null
-    const excludeRefs = getShownReferences()
-    const nonce = Date.now()
-
-    let effectiveMood = mood || ''
-
-    // Append exclusion list so the AI avoids repeats
-    if (excludeRefs.length > 0) {
-      const excludeStr = excludeRefs.join(', ')
-      const excludeLine = `IMPORTANT: Ne propose PAS ces versets déjà proposés: ${excludeStr}. Choisis un verset DIFFERENT.`
-      effectiveMood = effectiveMood
-        ? `${effectiveMood}. ${excludeLine}`
-        : excludeLine
-    }
-
-    // Append a nonce to guarantee the prompt is never byte-for-byte identical
-    effectiveMood = effectiveMood
-      ? `${effectiveMood} [${nonce}]`
-      : `Sélection variée ${nonce}`
-
-    const payload = { mood: effectiveMood }
+    const payload = {}
+    if (mood) payload.mood = mood
     if (topics && topics.length) payload.topics = topics
 
     const { data } = await DailyVerseAPI.getVerse(payload)
     const verseData = data.data ?? data
 
-    // Store the clean original mood so the UI displays it nicely
-    // (not the raw exclusion-instruction string the backend echoes back)
-    if (originalMood) {
-      verseData.display_mood = originalMood
+    // Display the clean mood/theme in the UI
+    if (mood) {
+      verseData.display_mood = mood
     } else if (topics && topics.length) {
       verseData.display_mood = topics.join(', ')
     } else {
@@ -163,7 +136,7 @@ async function fetchVerse(mood, topics) {
     addShownReference(verseData.reference)
     return verseData
   } catch (e) {
-    error.value = "Une erreur s'est produite. Veuillez réessayer."
+    error.value = e.response?.data?.message || "Une erreur s'est produite. Veuillez réessayer."
     return null
   } finally {
     loading.value = false
