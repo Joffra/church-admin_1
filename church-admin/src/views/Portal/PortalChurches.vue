@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { PortalAPI } from '../../services/api'
 
 const churches = ref([])
@@ -7,10 +7,12 @@ const loading = ref(true)
 const error = ref('')
 const search = ref('')
 
+// ---- Map state ----
+const mapInstance = ref(null)
+const mapContainer = ref(null)
+const selectedChurch = ref(null)
+
 function unwrap(payload) {
-  // Laravel ResourceCollection (paginated): { data: [...], links, meta }
-  // Laravel ResourceCollection (plain):    { data: [...] }
-  // Plain array fallback
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.data)) return payload.data
   return []
@@ -21,7 +23,6 @@ function fullName(member) {
   return `${member.first_name || ''} ${member.last_name || ''}`.trim()
 }
 
-// Build image URL from backend storage path
 function churchImgUrl(path) {
   if (!path) return null
   if (path.startsWith('http')) return path
@@ -31,6 +32,21 @@ function churchImgUrl(path) {
   if (path.startsWith('/')) return `${origin}${path}`
   return `${origin}/storage/${path}`
 }
+
+// Parse "lat,lng" string into { lat, lng } or null
+function parseCoords(str) {
+  if (!str || typeof str !== 'string') return null
+  const parts = str.split(',').map(s => parseFloat(s.trim()))
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return { lat: parts[0], lng: parts[1] }
+  }
+  return null
+}
+
+// Only churches that have valid GPS coordinates
+const churchesWithCoords = computed(() => {
+  return churches.value.filter(c => parseCoords(c.gps_coordinates))
+})
 
 const filtered = computed(() => {
   if (!search.value) return churches.value
@@ -48,6 +64,9 @@ async function loadChurches() {
   try {
     const res = await PortalAPI.getChurches()
     churches.value = unwrap(res.data)
+    // Init map after data loads
+    await nextTick()
+    initMap()
   } catch (e) {
     console.error('[PortalChurches] Failed to load churches:', {
       status: e.response?.status,
@@ -70,6 +89,61 @@ async function loadChurches() {
   } finally {
     loading.value = false
   }
+}
+
+// ---- Leaflet map ----
+async function initMap() {
+  if (mapInstance.value || !mapContainer.value) return
+  if (churchesWithCoords.value.length === 0) return
+
+  const L = await import('leaflet')
+
+  // Default center: first church with coords, or Haiti center
+  const first = churchesWithCoords.value[0]
+  const coords = parseCoords(first.gps_coordinates)
+
+  const map = L.map(mapContainer.value).setView([coords.lat, coords.lng], 8)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19,
+  }).addTo(map)
+
+  // Custom gold marker icon
+  const goldIcon = L.divIcon({
+    html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:#c9a227;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:12px;">⛪</span></div>`,
+    className: '',
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24],
+  })
+
+  // Add markers for each church with coordinates
+  churchesWithCoords.value.forEach(church => {
+    const c = parseCoords(church.gps_coordinates)
+    if (!c) return
+
+    const popupContent = `
+      <div style="min-width:180px;">
+        <strong style="font-size:14px;color:#1a1a2e;">${church.name || 'Église'}</strong>
+        ${church.address ? `<br><span style="font-size:12px;color:#666;">${church.address}</span>` : ''}
+        ${church.pastor?.first_name ? `<br><span style="font-size:12px;color:#666;">Pasteur: ${fullName(church.pastor)}</span>` : ''}
+      </div>
+    `
+
+    L.marker([c.lat, c.lng], { icon: goldIcon })
+      .addTo(map)
+      .bindPopup(popupContent)
+  })
+
+  mapInstance.value = map
+}
+
+function focusChurch(church) {
+  const coords = parseCoords(church.gps_coordinates)
+  if (!coords || !mapInstance.value) return
+  selectedChurch.value = church
+  mapInstance.value.flyTo([coords.lat, coords.lng], 14, { duration: 1 })
 }
 
 onMounted(loadChurches)
@@ -101,6 +175,37 @@ onMounted(loadChurches)
       </div>
     </div>
 
+    <!-- GPS Map card -->
+    <div
+      v-if="!loading && !error && churchesWithCoords.length > 0"
+      class="mt-8 overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm"
+    >
+      <div class="flex items-center justify-between border-b border-ink/5 px-5 py-3">
+        <div class="flex items-center gap-2">
+          <svg viewBox="0 0 24 24" class="h-5 w-5 text-gold" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="10" r="2.5" />
+          </svg>
+          <h2 class="font-display text-lg text-ink-dark">Carte des églises</h2>
+        </div>
+        <span class="text-xs text-ink-dark/40">{{ churchesWithCoords.length }} église{{ churchesWithCoords.length > 1 ? 's' : '' }} localisée{{ churchesWithCoords.length > 1 ? 's' : '' }}</span>
+      </div>
+      <!-- Leaflet map container -->
+      <div ref="mapContainer" class="h-80 w-full sm:h-96"></div>
+    </div>
+
+    <!-- Hint when no coords available -->
+    <div
+      v-if="!loading && !error && churches.length > 0 && churchesWithCoords.length === 0"
+      class="mt-8 flex items-center gap-3 rounded-lg border border-ink/10 bg-ink/5 px-5 py-4 text-sm text-ink-dark/50"
+    >
+      <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-ink-dark/30" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="10" r="2.5" />
+      </svg>
+      <p>Les coordonnées GPS des églises ne sont pas encore disponibles. La carte apparaîtra dès qu'elles seront ajoutées.</p>
+    </div>
+
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center py-20">
       <div class="h-8 w-8 animate-spin rounded-full border-2 border-ink/20 border-t-gold"></div>
@@ -124,30 +229,33 @@ onMounted(loadChurches)
 
     <!-- Grid -->
     <div v-else class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <RouterLink
+      <div
         v-for="church in filtered"
         :key="church.id"
-        :to="{ name: 'portal-church-detail', params: { id: church.id } }"
         class="church-card group overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm"
       >
-        <!-- Image -->
-        <div class="aspect-video overflow-hidden bg-ink/5">
-          <img
-            v-if="church.church_image"
-            :src="churchImgUrl(church.church_image)"
-            :alt="church.name"
-            class="h-full w-full object-cover"
-          />
-          <div v-else class="flex h-full items-center justify-center">
-            <svg viewBox="0 0 24 24" class="h-12 w-12 text-ink/15" fill="none" stroke="currentColor" stroke-width="1">
-              <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+        <!-- Image (clickable to detail page) -->
+        <RouterLink :to="{ name: 'portal-church-detail', params: { id: church.id } }">
+          <div class="aspect-video overflow-hidden bg-ink/5">
+            <img
+              v-if="church.church_image"
+              :src="churchImgUrl(church.church_image)"
+              :alt="church.name"
+              class="h-full w-full object-cover"
+            />
+            <div v-else class="flex h-full items-center justify-center">
+              <svg viewBox="0 0 24 24" class="h-12 w-12 text-ink/15" fill="none" stroke="currentColor" stroke-width="1">
+                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
           </div>
-        </div>
+        </RouterLink>
 
         <!-- Info -->
         <div class="p-5">
-          <h2 class="font-display text-lg text-ink-dark">{{ church.name }}</h2>
+          <RouterLink :to="{ name: 'portal-church-detail', params: { id: church.id } }">
+            <h2 class="font-display text-lg text-ink-dark hover:text-gold transition-colors">{{ church.name }}</h2>
+          </RouterLink>
 
           <div class="mt-3 flex items-center gap-2">
             <span
@@ -168,7 +276,7 @@ onMounted(loadChurches)
             </div>
             <div v-if="church.address" class="flex items-start gap-2">
               <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 text-ink-dark/30" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round"/>
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
               <p class="text-ink-dark/70">{{ church.address }}</p>
@@ -180,8 +288,21 @@ onMounted(loadChurches)
               <p class="text-ink-dark/70">{{ church.phone }}</p>
             </div>
           </div>
+
+          <!-- "Voir sur la carte" button -->
+          <button
+            v-if="parseCoords(church.gps_coordinates)"
+            @click="focusChurch(church)"
+            class="mt-4 flex items-center gap-2 rounded-md border border-gold/30 px-3 py-2 text-xs font-medium text-gold transition hover:bg-gold hover:text-ink-dark"
+          >
+            <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            Voir sur la carte
+          </button>
         </div>
-      </RouterLink>
+      </div>
     </div>
   </div>
 </template>
