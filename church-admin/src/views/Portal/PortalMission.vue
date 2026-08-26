@@ -5,15 +5,13 @@ import { PortalAPI } from '../../services/api'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Fix Leaflet default marker icon paths (broken in Vite)
-
-// @ts-ignore - Leaflet internal icon config
+// Use CDN URLs instead of undefined local marker variables.
+// This keeps Leaflet markers working without bundling image assets.
+const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png'
+const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png'
+const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-})
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
 
 const mission = ref(null)
 const loading = ref(true)
