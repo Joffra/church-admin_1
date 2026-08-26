@@ -7,6 +7,7 @@ const route = useRoute()
 const church = ref(null)
 const loading = ref(true)
 const error = ref('')
+const imageError = ref(false)
 
 function fullName(member) {
   if (!member) return '—'
@@ -110,10 +111,11 @@ onMounted(loadChurch)
       <!-- Hero image -->
       <div class="relative overflow-hidden rounded-xl bg-ink/5" style="aspect-ratio: 21/9">
         <img
-          v-if="publicInfo.image"
+          v-if="publicInfo.image && !imageError"
           :src="churchImgUrl(publicInfo.image)"
           :alt="publicInfo.name"
           class="h-full w-full object-cover"
+          @error="imageError = true"
         />
         <div v-else class="flex h-full items-center justify-center">
           <svg viewBox="0 0 24 24" class="h-16 w-16 text-ink/15" fill="none" stroke="currentColor" stroke-width="1">

@@ -22,6 +22,7 @@ const member = ref(null)
 const loading = ref(true)
 const error = ref('')
 const successMessage = ref('')
+const imageError = ref(false)
 
 // Churches for Transfer Dropdown
 const churches = ref([])
@@ -295,10 +296,11 @@ onMounted(loadMember)
             <!-- Profile photo / Avatar placeholder -->
             <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gold/20 text-2xl font-semibold text-gold border border-rule overflow-hidden">
               <img
-                v-if="member.profile_picture"
+                v-if="member.profile_picture && !imageError"
                 :src="member.profile_picture"
                 :alt="`${member.first_name} ${member.last_name}`"
                 class="h-full w-full object-cover"
+                @error="imageError = true"
               />
               <span v-else>
                 {{ (member.first_name?.[0] || member.last_name?.[0] || 'M').toUpperCase() }}

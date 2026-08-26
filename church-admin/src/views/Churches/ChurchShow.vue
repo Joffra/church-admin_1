@@ -14,6 +14,7 @@ const toast = useToastStore()
 const church = ref(null)
 const loading = ref(true)
 const error = ref('')
+const imageError = ref(false)
 const confirmArchive = ref(false)
 const archiving = ref(false)
 const togglingStatus = ref(false)
@@ -268,8 +269,14 @@ onMounted(load)
       </div>
 
       <!-- Church image -->
-      <div v-if="church.church_image" class="mb-5 overflow-hidden rounded-lg border border-rule">
-        <img :src="church.church_image" :alt="getField(church, 'name')" class="h-52 w-full object-cover" />
+      <div v-if="church.church_image && !imageError" class="mb-5 overflow-hidden rounded-lg border border-rule">
+        <img :src="church.church_image" :alt="getField(church, 'name')" class="h-52 w-full object-cover" @error="imageError = true" />
+      </div>
+      <!-- Fallback placeholder when image fails to load -->
+      <div v-if="imageError" class="mb-5 flex h-52 items-center justify-center rounded-lg border border-rule bg-ink/5">
+        <svg viewBox="0 0 24 24" class="h-16 w-16 text-ink/15" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
       </div>
 
       <!-- Info fields -->

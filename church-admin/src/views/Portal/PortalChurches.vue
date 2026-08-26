@@ -238,10 +238,11 @@ onMounted(loadChurches)
         <RouterLink :to="{ name: 'portal-church-detail', params: { id: church.id } }">
           <div class="aspect-video overflow-hidden bg-ink/5">
             <img
-              v-if="church.church_image"
+              v-if="church.church_image && !church._imgError"
               :src="churchImgUrl(church.church_image)"
               :alt="church.name"
               class="h-full w-full object-cover"
+              @error="church._imgError = true"
             />
             <div v-else class="flex h-full items-center justify-center">
               <svg viewBox="0 0 24 24" class="h-12 w-12 text-ink/15" fill="none" stroke="currentColor" stroke-width="1">

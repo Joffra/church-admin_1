@@ -18,6 +18,10 @@ L.Icon.Default.mergeOptions({
 const mission = ref(null)
 const loading = ref(true)
 const error = ref('')
+const failedImages = new Set()
+const imgErrorTracker = ref(0)
+function imgFailed(key) { return failedImages.has(key) }
+function onImgErrorReactive(key) { failedImages.add(key); imgErrorTracker.value++ }
 
 // ---- Map state ----
 const showMap = ref(false)
@@ -291,7 +295,7 @@ onUnmounted(() => {
             <div class="flex items-center gap-4">
               <!-- Profile picture or initials -->
               <div class="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                <img v-if="mission.bishop.profile_picture" :src="profileImgUrl(mission.bishop.profile_picture)" :alt="fullName(mission.bishop)" class="h-full w-full object-cover" />
+                <img v-if="mission.bishop.profile_picture && !imgFailed('bishop')" :src="profileImgUrl(mission.bishop.profile_picture)" :alt="fullName(mission.bishop)" class="h-full w-full object-cover" @error="onImgErrorReactive('bishop')" />
                 <div v-else class="flex h-full w-full items-center justify-center font-display text-xl text-ink-dark/50">
                   {{ initials(mission.bishop) }}
                 </div>
@@ -323,7 +327,7 @@ onUnmounted(() => {
           <div v-if="mission.mission_admin" class="rounded-xl border border-ink/10 bg-white p-6 shadow-sm transition hover:shadow-md">
             <div class="flex items-center gap-4">
               <div class="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                <img v-if="mission.mission_admin.profile_picture" :src="profileImgUrl(mission.mission_admin.profile_picture)" :alt="fullName(mission.mission_admin)" class="h-full w-full object-cover" />
+                <img v-if="mission.mission_admin.profile_picture && !imgFailed('mission_admin')" :src="profileImgUrl(mission.mission_admin.profile_picture)" :alt="fullName(mission.mission_admin)" class="h-full w-full object-cover" @error="onImgErrorReactive('mission_admin')" />
                 <div v-else class="flex h-full w-full items-center justify-center font-display text-xl text-ink-dark/50">
                   {{ initials(mission.mission_admin) }}
                 </div>
@@ -366,7 +370,7 @@ onUnmounted(() => {
           >
             <div class="flex items-center gap-3">
               <div class="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                <img v-if="member.profile_picture" :src="profileImgUrl(member.profile_picture)" :alt="fullName(member)" class="h-full w-full object-cover" />
+                <img v-if="member.profile_picture && !imgFailed('cm-' + member.id)" :src="profileImgUrl(member.profile_picture)" :alt="fullName(member)" class="h-full w-full object-cover" @error="onImgErrorReactive('cm-' + member.id)" />
                 <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">
                   {{ initials(member) }}
                 </div>
@@ -389,7 +393,7 @@ onUnmounted(() => {
         <div class="mt-6 rounded-xl border border-ink/10 bg-white shadow-sm overflow-hidden">
           <!-- Church image banner -->
           <div v-if="mission.central_church.church_image" class="h-40 w-full bg-ink/5">
-            <img :src="profileImgUrl(mission.central_church.church_image)" :alt="mission.central_church.name" class="h-full w-full object-cover" />
+            <img v-if="!imgFailed('central_church')" :src="profileImgUrl(mission.central_church.church_image)" :alt="mission.central_church.name" class="h-full w-full object-cover" @error="onImgErrorReactive('central_church')" />
           </div>
           <div v-else class="h-24 w-full bg-gradient-to-r from-ink to-ink/80 flex items-center px-6">
             <p class="font-display text-lg text-parchment/80">{{ mission.central_church.name }}</p>
@@ -423,7 +427,7 @@ onUnmounted(() => {
               <!-- Pastor -->
               <div v-if="mission.central_church.pastor?.id" class="flex items-center gap-3">
                 <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                  <img v-if="mission.central_church.pastor.profile_picture" :src="profileImgUrl(mission.central_church.pastor.profile_picture)" :alt="fullName(mission.central_church.pastor)" class="h-full w-full object-cover" />
+                  <img v-if="mission.central_church.pastor.profile_picture && !imgFailed('cc_pastor')" :src="profileImgUrl(mission.central_church.pastor.profile_picture)" :alt="fullName(mission.central_church.pastor)" class="h-full w-full object-cover" @error="onImgErrorReactive('cc_pastor')" />
                   <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">{{ initials(mission.central_church.pastor) }}</div>
                 </div>
                 <div>
@@ -435,7 +439,7 @@ onUnmounted(() => {
               <!-- Admin -->
               <div v-if="mission.central_church.admin?.id" class="flex items-center gap-3">
                 <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                  <img v-if="mission.central_church.admin.profile_picture" :src="profileImgUrl(mission.central_church.admin.profile_picture)" :alt="fullName(mission.central_church.admin)" class="h-full w-full object-cover" />
+                  <img v-if="mission.central_church.admin.profile_picture && !imgFailed('cc_admin')" :src="profileImgUrl(mission.central_church.admin.profile_picture)" :alt="fullName(mission.central_church.admin)" class="h-full w-full object-cover" @error="onImgErrorReactive('cc_admin')" />
                   <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">{{ initials(mission.central_church.admin) }}</div>
                 </div>
                 <div>
@@ -475,7 +479,7 @@ onUnmounted(() => {
           >
             <!-- Image banner -->
             <div v-if="church.church_image" class="h-32 w-full">
-              <img :src="profileImgUrl(church.church_image)" :alt="church.name" class="h-full w-full object-cover" />
+              <img v-if="!imgFailed('church-' + church.id)" :src="profileImgUrl(church.church_image)" :alt="church.name" class="h-full w-full object-cover" @error="onImgErrorReactive('church-' + church.id)" />
             </div>
             <div v-else class="h-20 w-full bg-gradient-to-r from-ink/80 to-ink/60 flex items-center px-5">
               <svg class="h-6 w-6 text-gold/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -492,7 +496,7 @@ onUnmounted(() => {
               <div class="mt-4 flex flex-wrap gap-3 border-t border-rule pt-3">
                 <div v-if="church.pastor?.id" class="flex items-center gap-2">
                   <div class="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                    <img v-if="church.pastor.profile_picture" :src="profileImgUrl(church.pastor.profile_picture)" :alt="fullName(church.pastor)" class="h-full w-full object-cover" />
+                    <img v-if="church.pastor.profile_picture && !imgFailed('ch_pastor-' + church.id)" :src="profileImgUrl(church.pastor.profile_picture)" :alt="fullName(church.pastor)" class="h-full w-full object-cover" @error="onImgErrorReactive('ch_pastor-' + church.id)" />
                     <div v-else class="flex h-full w-full items-center justify-center text-[10px] font-medium text-ink-dark/50">{{ initials(church.pastor) }}</div>
                   </div>
                   <div>
@@ -502,7 +506,7 @@ onUnmounted(() => {
                 </div>
                 <div v-if="church.admin?.id" class="flex items-center gap-2">
                   <div class="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                    <img v-if="church.admin.profile_picture" :src="profileImgUrl(church.admin.profile_picture)" :alt="fullName(church.admin)" class="h-full w-full object-cover" />
+                    <img v-if="church.admin.profile_picture && !imgFailed('ch_admin-' + church.id)" :src="profileImgUrl(church.admin.profile_picture)" :alt="fullName(church.admin)" class="h-full w-full object-cover" @error="onImgErrorReactive('ch_admin-' + church.id)" />
                     <div v-else class="flex h-full w-full items-center justify-center text-[10px] font-medium text-ink-dark/50">{{ initials(church.admin) }}</div>
                   </div>
                   <div>
