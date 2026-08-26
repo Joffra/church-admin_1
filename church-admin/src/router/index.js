@@ -87,6 +87,11 @@ router.beforeEach((to, from) => {
     return { name: 'login' }
   }
 
+  // Forced password changes take priority over dashboard and role redirects
+  if (auth.mustChangePassword && to.name !== 'password-change') {
+    return { name: 'password-change' }
+  }
+
   // 5. Dashboard route itself is restricted to admins — redirect simple users to Mon Église
   if (to.meta.requiresDashboard && !auth.canAccessDashboard) {
     return { name: 'mon-eglise' }

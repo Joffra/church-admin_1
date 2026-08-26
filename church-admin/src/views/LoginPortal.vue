@@ -29,7 +29,7 @@ async function onSubmit() {
 
   if (ok) {
     if (auth.mustChangePassword) {
-      router.push({ name: 'login-admin' })
+      router.push({ name: 'password-change' })
       return
     }
     toast.success('Connecté avec succès')
