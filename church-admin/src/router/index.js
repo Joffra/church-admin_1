@@ -81,13 +81,7 @@ router.beforeEach((to, from) => {
     return { name: 'mon-eglise' }
   }
 
-  // 4. Force password change — block all admin pages, redirect to login
-  // (login page shows the inline password change form)
-  if (auth.mustChangePassword && to.name !== 'password-change' && to.name !== 'profile') {
-    return { name: 'login' }
-  }
-
-  // Forced password changes take priority over dashboard and role redirects
+  // 4. Forced password changes take priority over every protected page.
   if (auth.mustChangePassword && to.name !== 'password-change') {
     return { name: 'password-change' }
   }

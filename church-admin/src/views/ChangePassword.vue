@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
@@ -24,8 +24,11 @@ const loading = ref(false)
 const success = ref('')
 const error = ref('')
 const fieldErrors = ref({})
+const redirectCountdown = ref(0)
+let redirectTimer = null
 
 async function onSubmit() {
+  const wasForced = auth.mustChangePassword
   loading.value = true
   success.value = ''
   error.value = ''
@@ -48,16 +51,21 @@ async function onSubmit() {
     // Clear the forced-change flag in the store
     auth.passwordChanged()
 
-    // If this was a forced change, redirect after a short delay
-    if (isForced.value) {
-      setTimeout(() => {
-        // Simple users go back to portal, admins go to dashboard
-        if (auth.canAccessDashboard) {
-          router.push({ name: 'dashboard' })
-        } else {
-          router.push({ name: 'portal-home' })
+    // Keep the pre-change value because passwordChanged() clears the flag.
+    if (wasForced) {
+      redirectCountdown.value = 3
+      redirectTimer = setInterval(() => {
+        redirectCountdown.value -= 1
+        if (redirectCountdown.value <= 0) {
+          clearInterval(redirectTimer)
+          redirectTimer = null
+          if (auth.canAccessDashboard) {
+            router.push({ name: 'dashboard' })
+          } else {
+            router.push({ name: 'portal-home' })
+          }
         }
-      }, 1200)
+      }, 1000)
     }
   } catch (e) {
     if (e.response?.status === 422 && e.response.data?.errors) {
@@ -72,6 +80,10 @@ async function onSubmit() {
     loading.value = false
   }
 }
+
+onUnmounted(() => {
+  if (redirectTimer) clearInterval(redirectTimer)
+})
 
 // Simple password strength indicator
 function passwordStrength(pw) {
@@ -125,7 +137,12 @@ function passwordStrength(pw) {
       <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
-      {{ success }}
+      <div>
+        <p>{{ success }}</p>
+        <p v-if="redirectCountdown > 0" class="mt-1 text-xs text-sage/80">
+          Redirection dans {{ redirectCountdown }} seconde{{ redirectCountdown > 1 ? 's' : '' }}…
+        </p>
+      </div>
     </div>
 
     <!-- Error banner -->

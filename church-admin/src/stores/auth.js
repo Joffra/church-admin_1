@@ -30,7 +30,10 @@ export const useAuthStore = defineStore('auth', {
     isSimpleUser: (state) => state.user?.role === 'user',
 
     // Must change password (forced on first login or after admin reset)
-    mustChangePassword: (state) => !!state.user?.must_change_password,
+    mustChangePassword: (state) => {
+      const value = state.user?.must_change_password ?? state.user?.mustChangePassword
+      return value === true || value === 1 || value === '1' || value === 'true'
+    },
 
     // Simple users (role=user) WITHOUT any admin permissions should NOT access dashboard
     // They can still access profile and password pages
