@@ -24,7 +24,14 @@ function loadChat() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (raw) {
-      messages.value = JSON.parse(raw)
+      // Remove legacy RAG source footers from conversations saved before this update.
+      messages.value = JSON.parse(raw).map(message => ({
+        ...message,
+        content: typeof message.content === 'string'
+          ? message.content.replace(/\n\n\*Sources\s*:\s*[^*]+\*/gi, '').trim()
+          : message.content,
+      }))
+      saveChat()
     }
   } catch {
     // ignore
@@ -84,16 +91,9 @@ async function sendMessage() {
 
     const { data } = await AiAssistantAPI.chat(content, history)
     const answer = data.data?.answer || data.answer || data.data?.reply || data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.'
-    const sources = data.data?.sources || data.sources || null
-
-    // If sources exist, append them as a formatted footer
-    let fullContent = answer
-    if (sources && Array.isArray(sources) && sources.length > 0) {
-      const sourceList = sources.map(s => s.title || s).join(', ')
-      fullContent += '\n\n*Sources : ' + sourceList + '*'
-    }
-
-    messages.value.push({ role: 'assistant', content: fullContent })
+    // RAG source documents remain an internal retrieval detail and are not
+    // displayed to members in the professional chat response.
+    messages.value.push({ role: 'assistant', content: answer })
     saveChat()
     nextTick(scrollToBottom)
   } catch (e) {
