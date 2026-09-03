@@ -78,9 +78,23 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await AuthAPI.login(member_code, password)
         this.token = data.access_token
-        this.user = data.user
         localStorage.setItem('auth_token', data.access_token)
-        localStorage.setItem('auth_user', JSON.stringify(data.user))
+
+        let user = data.user || {}
+        try {
+          const me = await AuthAPI.me()
+          const remoteUser = me.data?.data ?? me.data
+          if (remoteUser && typeof remoteUser === 'object') user = { ...user, ...remoteUser }
+        } catch {
+          // Keep the login payload if /user is temporarily unavailable.
+        }
+        user = {
+          ...user,
+          member_id: user.member_id ?? user.member?.id ?? null,
+          church_id: user.church_id ?? user.member?.church_id ?? user.member?.church?.id ?? null,
+        }
+        this.user = user
+        localStorage.setItem('auth_user', JSON.stringify(user))
         return true
       } catch (e) {
         if (e.response?.status === 422 || e.response?.status === 400) {

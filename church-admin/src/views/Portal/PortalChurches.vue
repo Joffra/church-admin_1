@@ -34,13 +34,22 @@ function churchImgUrl(path) {
 }
 
 // Parse "lat,lng" string into { lat, lng } or null
-function parseCoords(str) {
-  if (!str || typeof str !== 'string') return null
-  const parts = str.split(',').map(s => parseFloat(s.trim()))
-  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-    return { lat: parts[0], lng: parts[1] }
+function parseCoords(value) {
+  if (!value) return null
+  if (Array.isArray(value) && value.length >= 2) {
+    const [lat, lng] = value.slice(0, 2).map(Number)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
   }
-  return null
+  if (typeof value === 'object') {
+    const lat = Number(value.lat ?? value.latitude)
+    const lng = Number(value.lng ?? value.lon ?? value.longitude)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
+  }
+  if (typeof value !== 'string') return null
+  const parts = value.split(',').map(s => parseFloat(s.trim()))
+  return parts.length === 2 && parts.every(Number.isFinite)
+    ? { lat: parts[0], lng: parts[1] }
+    : null
 }
 
 // Only churches that have valid GPS coordinates
@@ -64,9 +73,6 @@ async function loadChurches() {
   try {
     const res = await PortalAPI.getChurches()
     churches.value = unwrap(res.data)
-    // Init map after data loads
-    await nextTick()
-    initMap()
   } catch (e) {
     console.error('[PortalChurches] Failed to load churches:', {
       status: e.response?.status,
@@ -88,6 +94,8 @@ async function loadChurches() {
     }
   } finally {
     loading.value = false
+    await nextTick()
+    await initMap()
   }
 }
 
@@ -137,13 +145,22 @@ async function initMap() {
   })
 
   mapInstance.value = map
+  await nextTick()
+  map.invalidateSize()
 }
 
-function focusChurch(church) {
+async function focusChurch(church) {
   const coords = parseCoords(church.gps_coordinates)
-  if (!coords || !mapInstance.value) return
+  if (!coords) return
   selectedChurch.value = church
-  mapInstance.value.flyTo([coords.lat, coords.lng], 14, { duration: 1 })
+  if (!mapInstance.value) {
+    await nextTick()
+    await initMap()
+  }
+  if (mapInstance.value) {
+    mapInstance.value.invalidateSize()
+    mapInstance.value.flyTo([coords.lat, coords.lng], 14, { duration: 1 })
+  }
 }
 
 onMounted(loadChurches)

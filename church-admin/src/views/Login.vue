@@ -38,8 +38,7 @@ async function onSubmit() {
     // If backend says must_change_password, DO NOT redirect — stay on login page
     // and show the inline password change form
     if (auth.mustChangePassword) {
-      // Pre-fill current password with what they just typed
-      changeForm.value.current_password = password.value
+      router.push({ name: 'password-change' })
       return
     }
 

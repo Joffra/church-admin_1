@@ -35,7 +35,6 @@ const year = new Date().getFullYear()
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.14em] text-parchment/40">Espace réservé</p>
           <ul class="mt-3 space-y-2 text-sm">
-            <li><RouterLink to="/connexion" class="footer-link hover:text-gold transition-colors">Espace membre</RouterLink></li>
             <li><RouterLink to="/login" class="footer-link hover:text-gold transition-colors">Connexion administrateur</RouterLink></li>
           </ul>
         </div>

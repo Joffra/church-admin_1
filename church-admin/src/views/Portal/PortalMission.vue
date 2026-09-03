@@ -36,17 +36,26 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;')
 }
 
-function parseCoords(str) {
-  if (!str) return null
-  const parts = str.split(',').map(s => parseFloat(s.trim()))
-  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts
-  return null
+function parseCoords(value) {
+  if (!value) return null
+  if (Array.isArray(value) && value.length >= 2) {
+    const parts = value.slice(0, 2).map(Number)
+    return parts.every(Number.isFinite) ? parts : null
+  }
+  if (typeof value === 'object') {
+    const lat = Number(value.lat ?? value.latitude)
+    const lng = Number(value.lng ?? value.lon ?? value.longitude)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null
+  }
+  if (typeof value !== 'string') return null
+  const parts = value.split(',').map(s => parseFloat(s.trim()))
+  return parts.length === 2 && parts.every(Number.isFinite) ? parts : null
 }
 
 function toggleMap() {
   showMap.value = !showMap.value
   if (showMap.value) {
-    nextTick(initMap)
+    nextTick(() => nextTick(initMap))
   } else if (mapInstance) {
     mapInstance.remove()
     mapInstance = null
@@ -321,37 +330,6 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Mission Admin -->
-          <div v-if="mission.mission_admin" class="rounded-xl border border-ink/10 bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div class="flex items-center gap-4">
-              <div class="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                <img v-if="mission.mission_admin.profile_picture && !imgFailed('mission_admin')" :src="profileImgUrl(mission.mission_admin.profile_picture)" :alt="fullName(mission.mission_admin)" class="h-full w-full object-cover" @error="onImgErrorReactive('mission_admin')" />
-                <div v-else class="flex h-full w-full items-center justify-center font-display text-xl text-ink-dark/50">
-                  {{ initials(mission.mission_admin) }}
-                </div>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-gold">Administrateur de la Mission</p>
-                <p class="mt-0.5 font-medium text-ink-dark">{{ fullName(mission.mission_admin) }}</p>
-                <p v-if="mission.mission_admin.ecclesiastical_title" class="text-sm text-ink-dark/50">{{ mission.mission_admin.ecclesiastical_title }}</p>
-              </div>
-            </div>
-            <!-- Admin details -->
-            <div class="mt-4 space-y-1.5 border-t border-rule pt-3 text-sm">
-              <p v-if="mission.mission_admin.email" class="flex items-center gap-2 text-ink-dark/60">
-                <svg class="h-3.5 w-3.5 text-ink-dark/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H4zM4 16l4-4 4 4 4-4 4 4M4 20l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                {{ mission.mission_admin.email }}
-              </p>
-              <p v-if="mission.mission_admin.phone" class="flex items-center gap-2 text-ink-dark/60">
-                <svg class="h-3.5 w-3.5 text-ink-dark/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 014.12 4.18 2 2 0 016.1 2h3a2 2 0 012 1.72c.13.96.37 1.9.7 2.81a2 2 0 01-.45 2.11L10.1 9.9a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                {{ mission.mission_admin.phone }}
-              </p>
-              <p v-if="mission.mission_admin.church?.name" class="flex items-center gap-2 text-ink-dark/60">
-                <svg class="h-3.5 w-3.5 text-ink-dark/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                {{ mission.mission_admin.church.name }}
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -434,18 +412,6 @@ onUnmounted(() => {
                   <p v-if="mission.central_church.pastor.ecclesiastical_title" class="text-xs text-ink-dark/40">{{ mission.central_church.pastor.ecclesiastical_title }}</p>
                 </div>
               </div>
-              <!-- Admin -->
-              <div v-if="mission.central_church.admin?.id" class="flex items-center gap-3">
-                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                  <img v-if="mission.central_church.admin.profile_picture && !imgFailed('cc_admin')" :src="profileImgUrl(mission.central_church.admin.profile_picture)" :alt="fullName(mission.central_church.admin)" class="h-full w-full object-cover" @error="onImgErrorReactive('cc_admin')" />
-                  <div v-else class="flex h-full w-full items-center justify-center font-display text-sm text-ink-dark/50">{{ initials(mission.central_church.admin) }}</div>
-                </div>
-                <div>
-                  <p class="text-[10px] uppercase tracking-wide text-ink-dark/40">Administrateur</p>
-                  <p class="text-sm font-medium text-ink-dark">{{ fullName(mission.central_church.admin) }}</p>
-                  <p v-if="mission.central_church.admin.ecclesiastical_title" class="text-xs text-ink-dark/40">{{ mission.central_church.admin.ecclesiastical_title }}</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -460,7 +426,7 @@ onUnmounted(() => {
           </div>
           <button
             @click="toggleMap"
-            class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-gold hover:underline"
+            class="inline-flex items-center gap-1.5 text-sm font-medium text-gold hover:underline"
           >
             {{ showMap ? 'Masquer la carte' : 'Voir la carte' }}
             <svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform" :class="showMap ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2">
@@ -490,7 +456,7 @@ onUnmounted(() => {
                 {{ church.address }}
               </p>
 
-              <!-- Pastor & Admin mini -->
+              <!-- Pastor mini -->
               <div class="mt-4 flex flex-wrap gap-3 border-t border-rule pt-3">
                 <div v-if="church.pastor?.id" class="flex items-center gap-2">
                   <div class="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-ink/5">
@@ -500,16 +466,6 @@ onUnmounted(() => {
                   <div>
                     <p class="text-[9px] uppercase tracking-wide text-ink-dark/30">Pasteur</p>
                     <p class="text-xs font-medium text-ink-dark">{{ fullName(church.pastor) }}</p>
-                  </div>
-                </div>
-                <div v-if="church.admin?.id" class="flex items-center gap-2">
-                  <div class="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-ink/5">
-                    <img v-if="church.admin.profile_picture && !imgFailed('ch_admin-' + church.id)" :src="profileImgUrl(church.admin.profile_picture)" :alt="fullName(church.admin)" class="h-full w-full object-cover" @error="onImgErrorReactive('ch_admin-' + church.id)" />
-                    <div v-else class="flex h-full w-full items-center justify-center text-[10px] font-medium text-ink-dark/50">{{ initials(church.admin) }}</div>
-                  </div>
-                  <div>
-                    <p class="text-[9px] uppercase tracking-wide text-ink-dark/30">Admin</p>
-                    <p class="text-xs font-medium text-ink-dark">{{ fullName(church.admin) }}</p>
                   </div>
                 </div>
               </div>
