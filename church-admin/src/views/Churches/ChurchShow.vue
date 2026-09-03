@@ -15,8 +15,8 @@ const church = ref(null)
 const loading = ref(true)
 const error = ref('')
 const imageError = ref(false)
-const confirmArchive = ref(false)
-const archiving = ref(false)
+const confirmRemove = ref(false)
+const removing = ref(false)
 const togglingStatus = ref(false)
 
 // Archive with transfer state
@@ -74,8 +74,8 @@ async function toggleStatus() {
   }
 }
 
-async function openArchiveModal() {
-  confirmArchive.value = true
+async function openRemoveModal() {
+  confirmRemove.value = true
   transferMessage.value = ''
   targetChurchId.value = ''
   // If church has members, load available target churches
@@ -93,8 +93,8 @@ async function openArchiveModal() {
   }
 }
 
-async function onArchive() {
-  archiving.value = true
+async function onRemove() {
+  removing.value = true
   error.value = ''
   try {
     const payload = hasMembers.value && targetChurchId.value
@@ -114,10 +114,10 @@ async function onArchive() {
     if (e.response?.status === 422) {
       error.value = e.response?.data?.message || "Impossible de supprimer cette église. Veuillez d'abord transférer ses membres."
     } else {
-      error.value = e.response?.data?.message || "Impossible d'archiver cette église."
+      error.value = e.response?.data?.message || "Impossible d'supprimer cette église."
     }
-    archiving.value = false
-    confirmArchive.value = false
+    removing.value = false
+    confirmRemove.value = false
   }
 }
 
@@ -260,10 +260,10 @@ onMounted(load)
             Modifier
           </RouterLink>
           <button
-            @click="openArchiveModal"
+            @click="openRemoveModal"
             class="rounded-md border border-rust/30 px-4 py-2 text-sm font-medium text-rust/80 transition hover:bg-rust/5"
           >
-            Archiver
+            Supprimer
           </button>
         </div>
       </div>
@@ -361,12 +361,12 @@ onMounted(load)
 
     <!-- Confirm archive modal — FIXED: handles member transfer -->
     <div
-      v-if="confirmArchive"
+      v-if="confirmRemove"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
-      @click.self="confirmArchive = false"
+      @click.self="confirmRemove = false"
     >
       <div class="w-full max-w-md rounded-lg bg-white p-6">
-        <h3 class="font-display text-lg text-ink-dark">Archiver cette église ?</h3>
+        <h3 class="font-display text-lg text-ink-dark">Supprimer cette église ?</h3>
 
         <!-- Transfer message (success after initiating transfer) -->
         <div v-if="transferMessage" class="mt-3 rounded-md border border-sage/30 bg-sage/5 px-4 py-3 text-sm text-sage">
@@ -409,18 +409,18 @@ onMounted(load)
         <div class="mt-6 flex justify-end gap-3">
           <button
             v-if="!transferMessage"
-            @click="confirmArchive = false"
+            @click="confirmRemove = false"
             class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
           >
             Annuler
           </button>
           <button
             v-if="!transferMessage"
-            :disabled="archiving || (hasMembers && !targetChurchId)"
-            @click="onArchive"
+            :disabled="removing || (hasMembers && !targetChurchId)"
+            @click="onRemove"
             class="rounded-md bg-rust px-4 py-2 text-sm font-semibold text-white transition hover:bg-rust/90 disabled:opacity-60"
           >
-            {{ archiving ? 'Archivage…' : hasMembers ? 'Transférer et archiver' : 'Archiver' }}
+            {{ removing ? 'Suppression…' : hasMembers ? 'Transférer et supprimer' : 'Supprimer' }}
           </button>
         </div>
       </div>

@@ -13,8 +13,8 @@ const churches = ref([])
 const loading = ref(true)
 const error = ref('')
 const search = ref('')
-const confirmArchiveId = ref(null)
-const archiving = ref(false)
+const confirmRemoveId = ref(null)
+const removing = ref(false)
 const togglingId = ref(null)
 
 // ---- Pagination ----
@@ -96,8 +96,8 @@ function goShow(id) {
 // Archive = soft delete on the backend (deleted_at). The record stays
 // in the database for historical/audit purposes but disappears from
 // this list once Eloquent's default scope excludes soft-deleted rows.
-async function confirmArchive(id) {
-  archiving.value = true
+async function confirmRemove(id) {
+  removing.value = true
   try {
     await ChurchesAPI.remove(id)
     churches.value = churches.value.filter((c) => c.id !== id)
@@ -106,10 +106,10 @@ async function confirmArchive(id) {
       currentPage.value--
     }
   } catch (e) {
-    error.value = e.response?.data?.message || "Impossible d'archiver cette église."
+    error.value = e.response?.data?.message || "Impossible d'supprimer cette église."
   } finally {
-    archiving.value = false
-    confirmArchiveId.value = null
+    removing.value = false
+    confirmRemoveId.value = null
   }
 }
 
@@ -201,10 +201,10 @@ onMounted(loadChurches)
                 </button>
                 <button
                   v-if="auth.canManageChurches"
-                  @click="confirmArchiveId = church.id"
+                  @click="confirmRemoveId = church.id"
                   class="rounded-md px-2.5 py-1.5 text-xs font-medium text-rust/70 transition hover:bg-rust/10 hover:text-rust"
                 >
-                  Archiver
+                  Supprimer
                 </button>
               </div>
             </td>
@@ -251,28 +251,28 @@ onMounted(loadChurches)
 
     <!-- Confirm archive modal -->
     <div
-      v-if="confirmArchiveId"
+      v-if="confirmRemoveId"
       class="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/50 px-4"
-      @click.self="confirmArchiveId = null"
+      @click.self="confirmRemoveId = null"
     >
       <div class="w-full max-w-sm rounded-lg bg-white p-6">
-        <h3 class="font-display text-lg text-ink-dark">Archiver cette église ?</h3>
+        <h3 class="font-display text-lg text-ink-dark">Supprimer cette église ?</h3>
         <p class="mt-2 text-sm text-ink-dark/60">
           L'église ne sera plus visible dans la liste, mais ses données resteront conservées dans le registre.
         </p>
         <div class="mt-6 flex justify-end gap-3">
           <button
-            @click="confirmArchiveId = null"
+            @click="confirmRemoveId = null"
             class="rounded-md px-4 py-2 text-sm font-medium text-ink-dark/60 hover:text-ink-dark"
           >
             Annuler
           </button>
           <button
-            :disabled="archiving"
-            @click="confirmArchive(confirmArchiveId)"
+            :disabled="removing"
+            @click="confirmRemove(confirmRemoveId)"
             class="rounded-md bg-rust px-4 py-2 text-sm font-semibold text-white transition hover:bg-rust/90 disabled:opacity-60"
           >
-            {{ archiving ? 'Archivage…' : 'Archiver' }}
+            {{ removing ? 'Suppression…' : 'Supprimer' }}
           </button>
         </div>
       </div>
