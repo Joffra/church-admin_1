@@ -22,7 +22,7 @@ function imgFailed(key) { return failedImages.has(key) }
 function onImgErrorReactive(key) { failedImages.add(key); imgErrorTracker.value++ }
 
 // ---- Map state ----
-const showMap = ref(false)
+const showMap = ref(true)
 const mapEl = ref(null)
 let mapInstance = null
 
@@ -38,6 +38,16 @@ function escapeHtml(str) {
 
 function parseCoords(value) {
   if (!value) return null
+  if (typeof value === 'string') {
+    const text = value.trim()
+    try {
+      if (text.startsWith('{') || text.startsWith('[')) return parseCoords(JSON.parse(text))
+    } catch { /* fall through to the supported text formats */ }
+    const point = text.match(/^POINT\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)$/i)
+    if (point) return [Number(point[2]), Number(point[1])]
+    const parts = text.split(',').map(s => parseFloat(s.trim()))
+    return parts.length === 2 && parts.every(Number.isFinite) ? parts : null
+  }
   if (Array.isArray(value) && value.length >= 2) {
     const parts = value.slice(0, 2).map(Number)
     return parts.every(Number.isFinite) ? parts : null
@@ -47,9 +57,16 @@ function parseCoords(value) {
     const lng = Number(value.lng ?? value.lon ?? value.longitude)
     return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null
   }
-  if (typeof value !== 'string') return null
-  const parts = value.split(',').map(s => parseFloat(s.trim()))
-  return parts.length === 2 && parts.every(Number.isFinite) ? parts : null
+  return null
+}
+
+function churchCoords(church) {
+  return parseCoords(
+    church.gps_coordinates ?? church.coordinates ?? church.location ??
+    (church.latitude != null && church.longitude != null
+      ? { latitude: church.latitude, longitude: church.longitude }
+      : null)
+  )
 }
 
 function toggleMap() {
@@ -63,10 +80,11 @@ function toggleMap() {
 }
 
 function initMap() {
+  if (!mapEl.value) return
   if (mapInstance) { mapInstance.remove(); mapInstance = null }
 
   const churchesWithCoords = (mission.value?.churches || [])
-    .map(c => ({ ...c, coords: parseCoords(c.gps_coordinates) }))
+    .map(c => ({ ...c, coords: churchCoords(c) }))
     .filter(c => c.coords)
 
   const allCoords = churchesWithCoords.map(c => c.coords)
@@ -154,6 +172,8 @@ async function loadMission() {
       throw new Error('Unexpected response format')
     }
     mission.value = payload
+    await nextTick()
+    if (showMap.value) initMap()
   } catch (e) {
     console.error('[PortalMission] Failed to load mission:', {
       status: e.response?.status,
@@ -288,13 +308,6 @@ onUnmounted(() => {
       <section>
         <h2 class="font-display text-2xl text-ink-dark">Direction de la Mission</h2>
         <p class="mt-1 text-sm text-ink-dark/50">Les responsables qui assurent le leadership spirituel et administratif.</p>
-
-        <!-- Map showing all churches -->
-        <transition name="map-fade">
-          <div v-if="showMap" class="mt-6 overflow-hidden rounded-xl border border-ink/10 shadow-md">
-            <div ref="mapEl" class="h-64 w-full sm:h-96"></div>
-          </div>
-        </transition>
 
         <div class="mt-6 grid gap-5 sm:grid-cols-2">
           <!-- Bishop -->
@@ -472,6 +485,24 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+
+        <!-- GPS map stays at the bottom of the mission page. -->
+        <div class="mt-8 flex justify-end">
+          <button
+            @click="toggleMap"
+            class="inline-flex items-center gap-1.5 text-sm font-medium text-gold hover:underline"
+          >
+            {{ showMap ? 'Masquer la carte GPS' : 'Afficher la carte GPS' }}
+          </button>
+        </div>
+        <transition name="map-fade">
+          <div v-if="showMap" class="mt-3 overflow-hidden rounded-xl border border-ink/10 bg-white shadow-md">
+            <div ref="mapEl" class="h-72 w-full sm:h-[28rem]"></div>
+            <p class="border-t border-rule px-4 py-2 text-xs text-ink-dark/45">
+              Les marqueurs indiquent la position GPS réelle de chaque église enregistrée.
+            </p>
+          </div>
+        </transition>
       </section>
     </div>
   </div>

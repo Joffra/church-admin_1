@@ -71,7 +71,7 @@ onMounted(() => {
       class="fixed inset-0 z-40 bg-black/40 lg:hidden"
     ></div>
 
-    <!-- Sidebar — fixed drawer on mobile, static on desktop -->
+    <!-- Sidebar — fixed drawer on mobile and desktop -->
     <div
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
       class="fixed z-50 h-full transition-transform duration-200 lg:inset-y-0 lg:left-0 lg:h-screen lg:translate-x-0 lg:z-auto"
@@ -79,7 +79,7 @@ onMounted(() => {
       <SideNav />
     </div>
 
-    <main class="min-w-0 flex-1 overflow-y-auto lg:ml-64">
+    <main class="min-w-0 flex-1 overflow-y-auto lg:ml-64 lg:h-screen">
       <div class="px-4 py-8 pt-16 lg:px-12 lg:pt-8">
         <div class="mx-auto max-w-6xl">
           <RouterView v-slot="{ Component }">

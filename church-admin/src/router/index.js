@@ -11,7 +11,7 @@ const routes = [
 
   // ---- Auth ----
   // /connexion — portal-themed login for simple members (church_admin/user)
-  { path: '/connexion', name: 'login-portal', component: () => import('../views/LoginPortal.vue'), meta: { public: true } },
+  { path: '/connexion', redirect: (to) => ({ name: 'login-admin', query: to.query }), meta: { public: true } },
   // /login — administration login for admins (mission_admin, church_admin)
   { path: '/login', name: 'login-admin', component: () => import('../views/Login.vue'), meta: { public: true } },
 

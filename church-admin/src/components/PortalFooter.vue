@@ -1,8 +1,16 @@
 <script setup>
 import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { useAuthStore } from '../stores/auth'
 import logo from '../assets/logo.png'
 
 const year = new Date().getFullYear()
+const auth = useAuthStore()
+const portalAccess = computed(() => {
+  if (!auth.isAuthenticated) return { to: '/login', label: 'Connexion administrateur' }
+  if (auth.isMissionAdmin) return { to: '/admin', label: 'Tableau de bord' }
+  return { to: '/mon-eglise', label: 'Mon Église' }
+})
 </script>
 
 <template>
@@ -35,7 +43,7 @@ const year = new Date().getFullYear()
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.14em] text-parchment/40">Espace réservé</p>
           <ul class="mt-3 space-y-2 text-sm">
-            <li><RouterLink to="/login" class="footer-link hover:text-gold transition-colors">Connexion administrateur</RouterLink></li>
+            <li><RouterLink :to="portalAccess.to" class="footer-link hover:text-gold transition-colors">{{ portalAccess.label }}</RouterLink></li>
           </ul>
         </div>
       </div>
