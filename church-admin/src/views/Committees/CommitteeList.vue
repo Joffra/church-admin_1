@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CommitteesAPI } from '../../services/api'
+import { CommitteesAPI, ChurchesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
@@ -38,7 +38,23 @@ async function loadCommittees() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await CommitteesAPI.list()
+    let structureId = auth.user?.structure_id || auth.user?.member?.structure_id || null
+
+    // A church admin's login identifies the church; resolve its Structure id
+    // before requesting committees. Mission admins can query their allowed set
+    // directly when no structure id is present.
+    if (!structureId && auth.userChurchId) {
+      try {
+        const churchResponse = await ChurchesAPI.get(auth.userChurchId)
+        const church = churchResponse.data?.data ?? churchResponse.data
+        structureId = church?.structure_id || church?.structure?.id || null
+      } catch {
+        // The /committees request still lets the backend apply its user scope.
+      }
+    }
+
+    const params = structureId ? { structure_id: structureId } : undefined
+    const { data } = await CommitteesAPI.list(params)
     committees.value = Array.isArray(data) ? data : (data.data ?? [])
   } catch (e) {
     error.value = e.response?.data?.message || 'Impossible de charger les comités.'
