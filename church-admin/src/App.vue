@@ -22,8 +22,11 @@ const sidebarOpen = ref(false)
 onMounted(() => {
   setPasswordChangeHandler(() => {
     auth.flagMustChangePassword()
-    if (router.currentRoute.value.name !== 'password-change') {
-      router.push({ name: 'password-change' })
+    // Bounce to the login page's inline change form, same as the router
+    // guard — /password/change renders inside the admin layout (SideNav
+    // visible), which must stay hidden until the forced change is done.
+    if (router.currentRoute.value.name !== 'login-admin') {
+      router.push({ name: 'login-admin' })
     }
   })
 })

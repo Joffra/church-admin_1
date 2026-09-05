@@ -75,15 +75,20 @@ router.beforeEach((to, from) => {
   }
 
   // 3. Already logged in → skip login pages UNLESS must_change_password
+  // (the login page itself renders the inline password-change form —
+  // returning `true` here just lets the user stay put, no self-redirect)
   if (to.name === 'login-admin' || to.name === 'login-portal') {
-    if (auth.mustChangePassword) return { name: 'login-admin' }
+    if (auth.mustChangePassword) return true
     if (auth.canAccessDashboard) return { name: 'dashboard' }
     return { name: 'mon-eglise' }
   }
 
   // 4. Forced password changes take priority over every protected page.
-  if (auth.mustChangePassword && to.name !== 'password-change') {
-    return { name: 'password-change' }
+  // Bounce back to the login page (inline change form) — NOT to
+  // /password/change, since that route renders inside the admin layout
+  // (SideNav + full nav) which must stay hidden until the change is done.
+  if (auth.mustChangePassword && to.name !== 'login-admin') {
+    return { name: 'login-admin' }
   }
 
   // 5. Dashboard route itself is restricted to admins — redirect simple users to Mon Église

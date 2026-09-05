@@ -36,9 +36,12 @@ async function onSubmit() {
   const ok = await auth.login(member_code.value.trim(), password.value)
   if (ok) {
     // If backend says must_change_password, DO NOT redirect — stay on login page
-    // and show the inline password change form
+    // and show the inline password change form (see showPasswordChange below).
+    // Pushing to /password/change here was a regression: that route renders
+    // inside the admin layout (SideNav visible), exposing the full nav
+    // before the mandatory change is even done.
     if (auth.mustChangePassword) {
-      router.push({ name: 'password-change' })
+      changeForm.value.current_password = password.value
       return
     }
 
