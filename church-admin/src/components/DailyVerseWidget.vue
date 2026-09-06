@@ -13,8 +13,9 @@ const error = ref('')
 const moodText = ref('')
 const selectedTheme = ref(null)
 
-// Rate limiting for "change verse"
-const MAX_CHANGES_PER_DAY = 3
+// The backend allows 15 requests/day. The first verse is one request,
+// so the frontend allows 14 additional changes (15 verses total).
+const MAX_CHANGES_PER_DAY = 14
 
 const themes = [
   'Joie', 'Amour', 'Paix', 'Espérance', 'Gratitude',
