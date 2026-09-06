@@ -10,7 +10,7 @@ const routes = [
   { path: '/eglises/:id', name: 'portal-church-detail', component: () => import('../views/Portal/PortalChurchDetail.vue'), props: true, meta: { portal: true } },
 
   // ---- Auth ----
-  // /connexion — portal-themed login for simple members (church_admin/user)
+  // /connexion — unified login entry point for members and administrators
   { path: '/connexion', redirect: (to) => ({ name: 'login-admin', query: to.query }), meta: { public: true } },
   // /login — administration login for admins (mission_admin, church_admin)
   { path: '/login', name: 'login-admin', component: () => import('../views/Login.vue'), meta: { public: true } },
@@ -77,7 +77,7 @@ router.beforeEach((to, from) => {
   // 3. Already logged in → skip login pages UNLESS must_change_password
   // (the login page itself renders the inline password-change form —
   // returning `true` here just lets the user stay put, no self-redirect)
-  if (to.name === 'login-admin' || to.name === 'login-portal') {
+  if (to.name === 'login-admin') {
     if (auth.mustChangePassword) return true
     if (auth.canAccessDashboard) return { name: 'dashboard' }
     return { name: 'mon-eglise' }
