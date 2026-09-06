@@ -37,21 +37,32 @@ async function load() {
   }
 
   try {
-    const [churchRes, committeeRes] = await Promise.allSettled([
-      ChurchesAPI.get(churchId),
-      CommitteesAPI.showByStructure(churchId),
-    ])
-
-    if (churchRes.status === 'fulfilled') {
-      church.value = churchRes.value.data?.data ?? churchRes.value.data
-    } else {
+    // The backend route is /structures/{structure}/committee, so it needs
+    // the Structure id — not the Church id stored in the auth payload.
+    let churchRes
+    try {
+      churchRes = await ChurchesAPI.get(churchId)
+      church.value = churchRes.data?.data ?? churchRes.data
+    } catch (churchError) {
+      console.error('[MyChurch] Failed to load church:', churchError)
       error.value = "Impossible de charger les informations de votre église."
+      return
     }
 
-    if (committeeRes.status === 'fulfilled') {
-      committee.value = committeeRes.value.data?.data ?? committeeRes.value.data
+    const structureId = church.value?.structure?.id
+    if (structureId) {
+      try {
+        const committeeRes = await CommitteesAPI.showByStructure(structureId)
+        committee.value = committeeRes.data?.data ?? committeeRes.data
+      } catch (committeeError) {
+        // A 404 simply means this church has no committee yet.
+        if (committeeError.response?.status !== 404) {
+          console.error('[MyChurch] Failed to load church committee:', committeeError)
+        }
+      }
+    } else {
+      console.warn('[MyChurch] Church response has no associated structure id', church.value)
     }
-    // committee 404 is acceptable — some churches may not have one yet
   } finally {
     loading.value = false
   }
