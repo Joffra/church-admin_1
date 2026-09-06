@@ -49,7 +49,9 @@ async function load() {
       return
     }
 
-    const structureId = church.value?.structure?.id
+    // ChurchResource returns `structure_id` at the top level.
+    // Keep the nested fallback for compatibility with older responses.
+    const structureId = church.value?.structure_id ?? church.value?.structure?.id
     if (structureId) {
       try {
         const committeeRes = await CommitteesAPI.showByStructure(structureId)
