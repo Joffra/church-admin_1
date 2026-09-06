@@ -24,6 +24,30 @@ function churchImgUrl(path) {
   return `${origin}/storage/${path}`
 }
 
+function parseCoords(value) {
+  if (!value) return null
+  if (Array.isArray(value) && value.length >= 2) {
+    const [lat, lng] = value.slice(0, 2).map(Number)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
+  }
+  if (typeof value === 'object') {
+    const lat = Number(value.lat ?? value.latitude)
+    const lng = Number(value.lng ?? value.lon ?? value.longitude)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
+  }
+  if (typeof value !== 'string') return null
+  const parts = value.split(',').map(s => parseFloat(s.trim()))
+  return parts.length === 2 && parts.every(Number.isFinite)
+    ? { lat: parts[0], lng: parts[1] }
+    : null
+}
+
+function googleMapsDirectionsUrl() {
+  const coords = parseCoords(church.value?.gps_coordinates)
+  if (!coords) return null
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${coords.lat},${coords.lng}`)}&travelmode=driving`
+}
+
 // Show only public-safe info — no member counts, no admin details, no GPS coords
 const publicInfo = computed(() => {
   if (!church.value) return null
@@ -40,6 +64,7 @@ const publicInfo = computed(() => {
     } : null,
     description: church.value.description || church.value.mission_statement,
     founded_date: church.value.founded_date,
+    gps_coordinates: church.value.gps_coordinates,
   }
 })
 
@@ -161,9 +186,21 @@ onMounted(loadChurch)
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
             </div>
-            <div>
+            <div class="min-w-0 flex-1">
               <p class="text-xs uppercase tracking-wide text-ink-dark/40">Adresse</p>
               <p class="text-sm text-ink-dark/80">{{ publicInfo.address }}</p>
+              <a
+                v-if="parseCoords(publicInfo.gps_coordinates)"
+                :href="googleMapsDirectionsUrl()"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-3 inline-flex items-center gap-2 rounded-md bg-gold px-3 py-2 text-xs font-semibold text-ink-dark transition hover:bg-gold-light"
+              >
+                Itinéraire Google Maps
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 19l16-14M8 5h12v12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </a>
             </div>
           </div>
         </div>

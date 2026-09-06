@@ -52,6 +52,16 @@ function parseCoords(value) {
     : null
 }
 
+// Opens Google Maps navigation from the user's current location to this church.
+// No Google API key is required because the route is calculated by Google Maps
+// after the user opens the link/app.
+function googleMapsDirectionsUrl(church) {
+  const coords = parseCoords(church?.gps_coordinates)
+  if (!coords) return null
+  const destination = `${coords.lat},${coords.lng}`
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`
+}
+
 // Only churches that have valid GPS coordinates
 const churchesWithCoords = computed(() => {
   return churches.value.filter(c => parseCoords(c.gps_coordinates))
@@ -307,18 +317,30 @@ onMounted(loadChurches)
             </div>
           </div>
 
-          <!-- "Voir sur la carte" button -->
-          <button
-            v-if="parseCoords(church.gps_coordinates)"
-            @click="focusChurch(church)"
-            class="mt-4 flex items-center gap-2 rounded-md border border-gold/30 px-3 py-2 text-xs font-medium text-gold transition hover:bg-gold hover:text-ink-dark"
-          >
-            <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="12" cy="10" r="2.5" />
-            </svg>
-            Voir sur la carte
-          </button>
+          <!-- Map and directions actions -->
+          <div v-if="parseCoords(church.gps_coordinates)" class="mt-4 flex flex-wrap gap-2">
+            <button
+              @click="focusChurch(church)"
+              class="flex items-center gap-2 rounded-md border border-gold/30 px-3 py-2 text-xs font-medium text-gold transition hover:bg-gold hover:text-ink-dark"
+            >
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              Voir sur la carte
+            </button>
+            <a
+              :href="googleMapsDirectionsUrl(church)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 rounded-md bg-gold px-3 py-2 text-xs font-semibold text-ink-dark transition hover:bg-gold-light"
+            >
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 19l16-14M8 5h12v12" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Itinéraire Google Maps
+            </a>
+          </div>
         </div>
       </div>
     </div>
