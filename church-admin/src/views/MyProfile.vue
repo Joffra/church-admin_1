@@ -41,12 +41,13 @@ async function fetchMemberData() {
   fetching.value = true
   try {
     const { data } = await MembersAPI.get(memberId)
-    memberData.value = data
-    // Pre-fill form with current values
+    const profileData = data?.data ?? data
+    memberData.value = profileData
+    // Laravel API resources may wrap the member in a `data` property.
     form.value = {
-      email: data.email || accountEmail.value,
-      phone: data.phone || '',
-      address: data.address || '',
+      email: profileData.email || accountEmail.value,
+      phone: profileData.phone || '',
+      address: profileData.address || '',
     }
   } catch (e) {
     // Backend might not return member data for simple users — that's OK
@@ -166,6 +167,10 @@ onMounted(() => {
           <dt class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">Nom</dt>
           <dd class="mt-1 text-sm text-ink">{{ user?.last_name || '—' }}</dd>
         </div>
+        <div class="col-span-2">
+          <dt class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">Email</dt>
+          <dd class="mt-1 break-all text-sm text-ink">{{ memberData?.email || accountEmail || '—' }}</dd>
+        </div>
       </dl>
 
       <!-- Divider -->
@@ -270,10 +275,6 @@ onMounted(() => {
         </div>
 
         <dl v-else class="space-y-4">
-          <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">Email</dt>
-            <dd class="mt-1 text-sm text-ink">{{ memberData?.email || accountEmail || '—' }}</dd>
-          </div>
           <div>
             <dt class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">Téléphone</dt>
             <dd class="mt-1 text-sm text-ink">{{ memberData?.phone || '—' }}</dd>
