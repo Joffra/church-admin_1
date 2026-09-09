@@ -25,7 +25,7 @@ auth.initAuth()
 // When the 401 interceptor fires, sync Pinia state and redirect to login
 window.addEventListener('auth:expired', () => {
   auth.handleTokenExpired()
-  if (router.currentRoute.value.name !== 'login') {
-    router.push({ name: 'login' })
+  if (router.currentRoute.value.name !== 'login-admin') {
+    router.push({ name: 'login-admin' })
   }
 })

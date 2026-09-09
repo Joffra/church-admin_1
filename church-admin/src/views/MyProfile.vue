@@ -8,6 +8,7 @@ const auth = useAuthStore()
 const toast = useToastStore()
 
 const user = computed(() => auth.user)
+const accountEmail = computed(() => user.value?.email || user.value?.member?.email || '')
 
 // ---- Edit mode ----
 const editing = ref(false)
@@ -43,7 +44,7 @@ async function fetchMemberData() {
     memberData.value = data
     // Pre-fill form with current values
     form.value = {
-      email: data.email || '',
+      email: data.email || accountEmail.value,
       phone: data.phone || '',
       address: data.address || '',
     }
@@ -271,7 +272,7 @@ onMounted(() => {
         <dl v-else class="space-y-4">
           <div>
             <dt class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">Email</dt>
-            <dd class="mt-1 text-sm text-ink">{{ memberData?.email || '—' }}</dd>
+            <dd class="mt-1 text-sm text-ink">{{ memberData?.email || accountEmail || '—' }}</dd>
           </div>
           <div>
             <dt class="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">Téléphone</dt>
