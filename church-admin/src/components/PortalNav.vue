@@ -159,17 +159,6 @@ async function logout() {
                     {{ dashboardLabel() }}
                   </RouterLink>
 
-                  <RouterLink
-                    to="/profile"
-                    @click="showDropdown = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
-                  >
-                    <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <circle cx="12" cy="8" r="4"/>
-                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/>
-                    </svg>
-                    Mon profil
-                  </RouterLink>
 
                   <RouterLink
                     to="/password/change"
@@ -296,17 +285,6 @@ async function logout() {
             {{ dashboardLabel() }}
           </RouterLink>
 
-          <RouterLink
-            to="/profile"
-            @click="closeMenu"
-            class="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
-          >
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="8" r="4"/>
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/>
-            </svg>
-            Mon profil
-          </RouterLink>
 
           <RouterLink
             v-if="auth.canAccessDashboard"

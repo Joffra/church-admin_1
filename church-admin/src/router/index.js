@@ -19,8 +19,6 @@ const routes = [
   { path: '/admin', name: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { requiresDashboard: true } },
   // Mon Église — scoped church view accessible to all authenticated users
   { path: '/mon-eglise', name: 'mon-eglise', component: () => import('../views/MyChurch.vue') },
-  // Own profile page — always accessible to authenticated users
-  { path: '/profile', name: 'profile', component: () => import('../views/MyProfile.vue') },
   // Churches — list and detail are public to all authenticated users
   { path: '/churches', name: 'churches', component: () => import('../views/Churches/ChurchList.vue') },
   { path: '/churches/new', name: 'church-create', component: () => import('../views/Churches/ChurchForm.vue'), meta: { requiresChurchManager: true } },
@@ -122,7 +120,7 @@ router.beforeEach((to, from) => {
   // 10. Member detail page: admins only
   if (to.meta.requiresMemberShow) {
     if (auth.isAdmin) return true
-    return { name: 'profile' }
+    return { name: 'mon-eglise' }
   }
 
   return true

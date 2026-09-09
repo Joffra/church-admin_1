@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // Simple users (role=user) WITHOUT any admin permissions should NOT access dashboard
-    // They can still access profile and password pages
+    // They can still access password management
     canAccessDashboard: (state) => {
       const role = state.user?.role
       if (role === 'mission_admin' || role === 'church_admin') return true

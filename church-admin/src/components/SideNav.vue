@@ -46,8 +46,6 @@ const navGroups = computed(() => {
         ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
         // Comités: all authenticated users
         { to: '/committees', label: 'Comités' },
-        // Mon profil: simple users only (admins access it via avatar popup)
-        ...(auth.isSimpleUser ? [{ to: '/profile', label: 'Mon profil' }] : []),
       ],
     },
   ]
@@ -75,7 +73,6 @@ function isActive(path) {
   if (path === '/committees') return route.path.startsWith('/committees')
   if (path === '/users') return route.path.startsWith('/users')
   if (path === '/knowledge-files') return route.path.startsWith('/knowledge-files')
-  if (path === '/profile') return route.path === '/profile'
   if (path === '/mon-eglise') return route.path === '/mon-eglise'
   if (path === '/password/change') return route.path.startsWith('/password')
   return route.path === path
@@ -105,10 +102,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
 })
 
-function goToProfile() {
-  showUserPopup.value = false
-  router.push({ name: 'profile' })
-}
 
 function goToPasswordChange() {
   showUserPopup.value = false
@@ -218,13 +211,6 @@ async function onLogout() {
             <p><span class="text-parchment/30">Rôle:</span> {{ roleLabel(auth.user?.role) }}</p>
           </div>
           <div class="mt-3 space-y-1 border-t border-white/10 pt-3">
-            <button
-              @click="goToProfile"
-              class="flex w-full items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
-            >
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>
-              Mon profil
-            </button>
             <button
               @click="goToPasswordChange"
               class="flex w-full items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-xs text-parchment/70 transition hover:bg-white/5 hover:text-parchment"
