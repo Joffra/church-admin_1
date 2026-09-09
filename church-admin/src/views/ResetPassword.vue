@@ -135,7 +135,7 @@ async function onVerifyCode() {
     setTimeout(() => {
       auth.logout()
       toast.success('Mot de passe réinitialisé avec succès')
-  router.push({ name: 'login' })
+  router.push({ name: 'login-admin' })
     }, 3500)
   } catch (e) {
     if (e.response?.status === 422 && e.response.data?.errors) {
