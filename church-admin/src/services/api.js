@@ -94,7 +94,7 @@ export const MembersAPI = {
   updateForm: (id, formData) => api.post(`/members/${id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  remove: (id) => api.delete(`/members/${id}`),
+  remove: (id) => api.delete('/members', { data: { member_ids: [id] } }),
   sanction: (id, data) => api.post(`/members/${id}/sanction`, data),
   liftSanction: (id, lifted_reason) => api.post(`/members/${id}/sanction/lift`, { lifted_reason }),
   transfer: (id, new_church_id) => api.patch(`/members/${id}/transfer`, { new_church_id }),
