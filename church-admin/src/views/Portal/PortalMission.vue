@@ -486,15 +486,6 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- GPS map stays at the bottom of the mission page. -->
-        <div class="mt-8 flex justify-end">
-          <button
-            @click="toggleMap"
-            class="inline-flex items-center gap-1.5 text-sm font-medium text-gold hover:underline"
-          >
-            {{ showMap ? 'Masquer la carte GPS' : 'Afficher la carte GPS' }}
-          </button>
-        </div>
         <transition name="map-fade">
           <div v-if="showMap" class="mt-3 overflow-hidden rounded-xl border border-ink/10 bg-white shadow-md">
             <div ref="mapEl" class="h-72 w-full sm:h-[28rem]"></div>
