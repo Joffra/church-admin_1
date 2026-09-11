@@ -175,6 +175,7 @@ async function handleArchive() {
   modalError.value = ''
   try {
     await MembersAPI.remove(props.id)
+    toast.success('Membre archivé avec succès')
     showArchiveModal.value = false
     router.push('/members')
   } catch (e) {

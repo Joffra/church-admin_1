@@ -78,6 +78,7 @@ async function confirmArchive(id) {
   archiving.value = true
   try {
     await MembersAPI.remove(id)
+    toast.success('Membre archivé avec succès')
     members.value = members.value.filter((m) => m.id !== id)
     if (paginated.value.length === 0 && currentPage.value > 1) {
       currentPage.value--
