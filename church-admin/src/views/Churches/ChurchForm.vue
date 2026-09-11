@@ -25,6 +25,7 @@ const members = ref([])
 const titles = ref([])
 const loadingPastors = ref(false)
 const loadingMembers = ref(false)
+const membersError = ref('')
 const loadingTitles = ref(false)
 
 // Mode toggles for create mode
@@ -86,11 +87,12 @@ async function loadPastors() {
 
 async function loadMembers() {
   loadingMembers.value = true
+  membersError.value = ''
   try {
     const { data } = await MembersAPI.availableAdmins()
     members.value = Array.isArray(data) ? data : (data.data ?? [])
-  } catch {
-    // silent
+  } catch (e) {
+    membersError.value = e.response?.data?.message || 'Impossible de charger les administrateurs disponibles.'
   } finally {
     loadingMembers.value = false
   }
@@ -485,14 +487,15 @@ onMounted(() => {
               <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-dark/50">
                 Administrateur d'église *
               </label>
-              <div v-if="loadingMembers" class="py-3 text-sm text-ink-dark/40">Chargement des membres…</div>
+              <div v-if="loadingMembers" class="py-3 text-sm text-ink-dark/40">Chargement des administrateurs disponibles…</div>
+              <p v-else-if="membersError" class="rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ membersError }}</p>
               <select
                 v-else
                 v-model="form.admin_member_id"
-                :disabled="saving"
+                :disabled="saving || !members.length"
                 class="w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold disabled:opacity-60"
               >
-                <option value="" disabled>Sélectionner un membre…</option>
+                <option value="" disabled>{{ members.length ? 'Sélectionner un membre…' : 'Aucun administrateur disponible' }}</option>
                 <option v-for="m in members" :key="m.id" :value="m.id">
                   {{ m.first_name }} {{ m.last_name }} — {{ m.member_code }}
                 </option>

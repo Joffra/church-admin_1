@@ -162,10 +162,10 @@ async function openAdminModal() {
   selectedAdminId.value = ''
   loadingMembers.value = true
   try {
-    const { data } = await MembersAPI.list()
+    const { data } = await MembersAPI.availableAdmins()
     members.value = Array.isArray(data) ? data : (data.data ?? [])
   } catch (e) {
-    adminError.value = 'Impossible de charger la liste des membres.'
+    adminError.value = e.response?.data?.message || "Impossible de charger les administrateurs disponibles."
   } finally {
     loadingMembers.value = false
   }
@@ -473,7 +473,7 @@ onMounted(load)
     >
       <div class="w-full max-w-md rounded-lg bg-white p-6">
         <h3 class="font-display text-lg text-ink-dark">Changer l'administrateur</h3>
-        <p class="mt-1 text-sm text-ink-dark/50">Sélectionnez un membre dans la liste.</p>
+        <p class="mt-1 text-sm text-ink-dark/50">Sélectionnez un administrateur disponible dans la liste.</p>
 
         <p v-if="adminError" class="mt-3 rounded-md border border-rust/30 bg-rust/5 px-3 py-2 text-xs text-rust">{{ adminError }}</p>
 
@@ -483,7 +483,7 @@ onMounted(load)
           v-model="selectedAdminId"
           class="mt-4 w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
         >
-          <option value="" disabled>Sélectionner un membre…</option>
+          <option value="" disabled>{{ members.length ? 'Sélectionner un administrateur…' : 'Aucun administrateur disponible' }}</option>
           <option v-for="m in members" :key="m.id" :value="m.id">
             {{ memberFullName(m) }} — {{ m.member_code }}
           </option>
