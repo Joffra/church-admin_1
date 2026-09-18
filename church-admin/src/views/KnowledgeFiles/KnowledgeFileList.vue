@@ -249,7 +249,7 @@ onUnmounted(revokePreviewUrl)
           {{ uploading ? 'Envoi en cours…' : 'Choisir un fichier' }}
         </button>
       </div>
-      <p class="text-xs text-ink-dark/40">Formats acceptés : .pdf, .txt — 10 Mo maximum</p>
+      <p class="text-xs text-ink-dark/40">Formats acceptés : .pdf — 10 Mo maximum</p>
       <input
         ref="fileInput"
         type="file"
