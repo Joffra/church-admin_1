@@ -59,9 +59,25 @@ async function loadCommittees() {
       per_page: 100,
       ...(structureId ? { structure_id: structureId } : {}),
     }
-    const { data } = await CommitteesAPI.list(params)
-    const payload = data?.data ?? data
-    committees.value = Array.isArray(payload) ? payload : (payload?.data ?? [])
+    const { data: firstResponse } = await CommitteesAPI.list({ ...params, page: 1 })
+    const firstPage = Array.isArray(firstResponse)
+      ? firstResponse
+      : (Array.isArray(firstResponse?.data) ? firstResponse.data : [])
+    const lastPage = Number(firstResponse?.meta?.last_page || 1)
+
+    if (lastPage > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: lastPage - 1 }, (_, index) =>
+          CommitteesAPI.list({ ...params, page: index + 2 })
+        )
+      )
+      const remainingCommittees = remainingPages.flatMap(({ data }) =>
+        Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])
+      )
+      committees.value = [...firstPage, ...remainingCommittees]
+    } else {
+      committees.value = firstPage
+    }
   } catch (e) {
     error.value = e.response?.data?.message || 'Impossible de charger les comités.'
   } finally {
