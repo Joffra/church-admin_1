@@ -48,6 +48,7 @@ const ROLE_PERMISSIONS = {
     'committee:manage',
     'committee:view-any',
     'member:sanction',
+    'member:transfer',
     'sanction:view-any',
     'user:manage',
     'user:view-any',
@@ -131,9 +132,9 @@ export const useAuthStore = defineStore('auth', {
     canManageMembers: (state) => state.permissions.includes('member:manage'),
     canSanctionMembers: (state) => state.permissions.includes('member:sanction'),
 
-    // Transfers: backend Gate 'transfer-members' = mission_admin OR
-    // 'member:transfer' (committee titles like Secrétaire Général).
-    // church_admin does NOT hold it — don't show a button that 403s.
+    // Transfers: mirrors the backend transfer-members Gate.
+    // mission_admin and church_admin receive this from their role base;
+    // committee titles may also grant it to regular users.
     canTransferMembers: (state) => state.permissions.includes('member:transfer'),
 
     // ---- Sanctions ----
