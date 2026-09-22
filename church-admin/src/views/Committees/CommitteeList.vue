@@ -53,9 +53,15 @@ async function loadCommittees() {
       }
     }
 
-    const params = structureId ? { structure_id: structureId } : undefined
+    // Laravel paginates this endpoint at 15 records by default. Ask for
+    // the maximum allowed page size so mission admins see the full list.
+    const params = {
+      per_page: 100,
+      ...(structureId ? { structure_id: structureId } : {}),
+    }
     const { data } = await CommitteesAPI.list(params)
-    committees.value = Array.isArray(data) ? data : (data.data ?? [])
+    const payload = data?.data ?? data
+    committees.value = Array.isArray(payload) ? payload : (payload?.data ?? [])
   } catch (e) {
     error.value = e.response?.data?.message || 'Impossible de charger les comités.'
   } finally {

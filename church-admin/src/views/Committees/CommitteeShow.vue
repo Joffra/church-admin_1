@@ -152,7 +152,7 @@ async function handleRemoveMember() {
   try {
     await CommitteesAPI.removeMember(route.params.id, {
       member_id: removeTarget.value.id,
-      title_id: removeTarget.value.assignment?.title?.id,
+      title_id: removeTarget.value.title_id,
     })
     removeTarget.value = null
     successMessage.value = 'Membre retiré du comité.'
