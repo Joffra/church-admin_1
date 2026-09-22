@@ -145,9 +145,15 @@ async function handleAddMember() {
   }
 }
 
-// FIXED: Now passes both member_id AND title_id to the backend
+// Passes both member_id AND title_id to the backend
 async function handleRemoveMember() {
   if (!removeTarget.value) return
+  if (!removeTarget.value.title_id) {
+    removeTarget.value = null
+    error.value =
+      "Impossible de déterminer le titre de ce membre dans le comité. Rechargez la page et réessayez."
+    return
+  }
   removing.value = true
   try {
     await CommitteesAPI.removeMember(route.params.id, {
@@ -165,14 +171,21 @@ async function handleRemoveMember() {
   }
 }
 
-// FIXED: Sets removeTarget with title info from the member's assignment
+// Sets removeTarget with title info for the backend's DELETE /committees/{id}/members,
+// which requires title_id. Resolve from every payload shape the API has used:
+// - CommitteeResource (v2/v3): assignment.title.id
+// - default Laravel pivot serialization: pivot.title_id / pivot.pivot_title_id
 function setRemoveTarget(member) {
   removeTarget.value = {
     id: member.id,
     first_name: member.first_name,
     last_name: member.last_name,
-    title_id: member.assignment?.title?.id,
-    title_name: member.assignment?.title?.name,
+    title_id:
+      member.assignment?.title?.id ??
+      member.pivot?.title_id ??
+      member.pivot?.pivot_title_id ??
+      null,
+    title_name: member.assignment?.title?.name || member.pivot?.title?.name || null,
   }
 }
 
