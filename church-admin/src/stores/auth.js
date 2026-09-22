@@ -119,7 +119,13 @@ export const useAuthStore = defineStore('auth', {
     // holders within their own church (church_admin, Secrétaire Général).
     // Mission_admin edits via 'member:create-restricted' but is blocked
     // from creating by MemberController::store.
-    canCreateMembers: (state) =>
+    // Create: 'member:manage' holders only (church_admin, Secrétaire Général,
+    // Pasteur Responsable, Pasteur Assistant, Diacre/Diaconesse).
+    // mission_admin is explicitly blocked from creating by MemberController::store.
+    canCreateMembers: (state) => state.permissions.includes('member:manage'),
+    // Edit: same as create, PLUS mission_admin (backend Gate 'manage-members'
+    // passes them via 'member:create-restricted' on any church).
+    canEditMember: (state) =>
       state.permissions.includes('member:manage') ||
       state.user?.role === 'mission_admin',
     canManageMembers: (state) => state.permissions.includes('member:manage'),

@@ -26,9 +26,9 @@ const routes = [
   { path: '/churches/:id/edit', name: 'church-edit', component: () => import('../views/Churches/ChurchForm.vue'), props: true, meta: { requiresChurchManager: true } },
   // Members
   { path: '/members', name: 'members', component: () => import('../views/Members/MemberList.vue'), meta: { requiresMemberViewer: true } },
-  { path: '/members/new', name: 'member-create', component: () => import('../views/Members/MemberForm.vue'), meta: { requiresMemberCreator: true } },
+  { path: '/members/new', name: 'member-create', component: () => import('../views/Members/MemberForm.vue'), meta: { requiresMemberCreate: true } },
   { path: '/members/:id', name: 'member-show', component: () => import('../views/Members/MemberShow.vue'), props: true, meta: { requiresMemberViewer: true } },
-  { path: '/members/:id/edit', name: 'member-edit', component: () => import('../views/Members/MemberForm.vue'), props: true, meta: { requiresMemberCreator: true } },
+  { path: '/members/:id/edit', name: 'member-edit', component: () => import('../views/Members/MemberForm.vue'), props: true, meta: { requiresMemberEditor: true } },
   // Users
   { path: '/users', name: 'users', component: () => import('../views/Users/UserList.vue'), meta: { requiresUserViewer: true } },
   // Committees
@@ -109,10 +109,17 @@ router.beforeEach((to, from) => {
     return auth.canAccessDashboard ? { name: 'dashboard' } : { name: 'mon-eglise' }
   }
 
-  // 9. Create/edit member: 'member:manage' holders (church_admin,
-  // Secrétaire Général) or mission_admin (edit-only via
-  // member:create-restricted; backend blocks mission_admin creates)
-  if (to.meta.requiresMemberCreator && !auth.canCreateMembers) {
+  // 9. Create member: 'member:manage' holders only (church_admin,
+  // Secrétaire Général, Pasteur Responsable, Pasteur Assistant, Diacre).
+  // mission_admin is blocked from creating by MemberController::store.
+  if (to.meta.requiresMemberCreate && !auth.canCreateMembers) {
+    return auth.canViewMembers ? { name: 'members' } : { name: 'mon-eglise' }
+  }
+
+  // 9b. Edit member: 'member:manage' holders or mission_admin
+  // (backend Gate 'manage-members' passes mission_admin via
+  // 'member:create-restricted' on any church)
+  if (to.meta.requiresMemberEditor && !auth.canEditMember) {
     return auth.canViewMembers ? { name: 'members' } : { name: 'mon-eglise' }
   }
 
