@@ -175,7 +175,7 @@ export const useAuthStore = defineStore('auth', {
 
       if (this.token && this.user?.member_id) {
         try {
-          const { data } = await CommitteesAPI.list()
+          const { data } = await CommitteesAPI.list({ per_page: 100 })
           const payload = data?.data ?? data
           const list = Array.isArray(payload)
             ? payload
@@ -292,7 +292,7 @@ export const useAuthStore = defineStore('auth', {
 
     // Re-validate the session on app boot by fetching /user from the backend
     async initAuth() {
-      if (!this.token) return
+      if (!this.token || this.permissionsHydrated) return
       try {
         const { data } = await AuthAPI.me()
         const userData = data.data ?? data

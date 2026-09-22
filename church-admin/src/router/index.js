@@ -59,7 +59,7 @@ router.afterEach((to) => {
   }
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   const auth = useAuthStore()
 
   // 1. Portal & public routes — always allow
@@ -69,6 +69,10 @@ router.beforeEach((to, from) => {
   if (!auth.isAuthenticated) {
     return { name: 'login-admin', query: { redirect: to.fullPath } }
   }
+
+  // Hydrate role and committee-title permissions before protected routes
+  // are evaluated, including after a direct page refresh.
+  if (!auth.permissionsHydrated) await auth.initAuth()
 
   // 3. Already logged in → skip login pages UNLESS must_change_password
   // (the login page itself renders the inline password-change form —
