@@ -82,7 +82,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-md border border-rule">
+  <!-- `relative z-0 isolate` creates a contained stacking context: Leaflet's
+       internal panes/controls (z-index 400–1000) can no longer paint above
+       page-level modals (usually z-50) that are NOT nested inside this map. -->
+  <div class="relative z-0 isolate overflow-hidden rounded-md border border-rule">
     <div ref="mapEl" class="h-64 w-full"></div>
     <div v-if="!readonly" class="border-t border-rule bg-parchment px-3 py-2 text-xs text-ink-dark/50">
       Cliquez sur la carte pour placer le marqueur. Vous pouvez aussi le glisser pour ajuster.

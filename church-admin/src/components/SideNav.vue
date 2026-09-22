@@ -26,24 +26,28 @@ const passwordExpanded = ref(route.path.startsWith('/password'))
 const showUserPopup = ref(false)
 
 const navGroups = computed(() => {
+  // Effective permissions (role + committee titles like Secrétaire Général)
+  // drive what appears in the sidebar, mirroring backend Gates.
+  const overviewItems = auth.isMissionAdmin
+    ? [{ to: '/admin', label: 'Tableau de bord' }]
+    : auth.canAccessDashboard && !auth.isChurchAdmin
+      // Committee members with real permissions (e.g. Secrétaire Général) get the dashboard
+      ? [{ to: '/admin', label: 'Tableau de bord' }, { to: '/mon-eglise', label: 'Mon Église' }]
+      : [{ to: '/mon-eglise', label: 'Mon Église' }]
+
   const groups = [
     {
       label: 'Vue d\'ensemble',
-      // mission_admin → Tableau de bord only
-      // church_admin  → Mon Église only (Dashboard redirects them anyway)
-      // user          → Mon Église only
-      items: auth.isMissionAdmin
-        ? [{ to: '/admin', label: 'Tableau de bord' }]
-        : [{ to: '/mon-eglise', label: 'Mon Église' }],
+      items: overviewItems,
     },
     {
       label: 'Registre',
       items: [
         { to: '/churches', label: 'Églises' },
-        // Membres: admins only (user role is blocked by router guard anyway — keep nav clean)
+        // Membres: 'member:view-any' holders (mission_admin, church_admin, Secrétaire Général…)
         ...(auth.canViewMembers ? [{ to: '/members', label: 'Membres' }] : []),
-        // Sanctions: admins only
-        ...(auth.isAdmin ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
+        // Sanctions: 'sanction:view-any' holders
+        ...(auth.canViewSanctions ? [{ to: '/sanctions', label: 'Sanctions' }] : []),
         // Comités: all authenticated users
         { to: '/committees', label: 'Comités' },
       ],
@@ -51,7 +55,8 @@ const navGroups = computed(() => {
   ]
 
   const adminItems = [
-    ...(auth.canManageUsers ? [{ to: '/users', label: 'Utilisateurs' }] : []),
+    // Utilisateurs: 'user:view-any' holders
+    ...(auth.canViewUsers ? [{ to: '/users', label: 'Utilisateurs' }] : []),
     // Base de connaissance IA : Admin Mission / Évêque uniquement
     ...(auth.canManageKnowledgeBase ? [{ to: '/knowledge-files', label: 'Base de connaissance IA' }] : []),
   ]

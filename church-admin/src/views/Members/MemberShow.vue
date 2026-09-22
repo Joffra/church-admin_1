@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { MembersAPI, ChurchesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
@@ -23,6 +23,30 @@ const loading = ref(true)
 const error = ref('')
 const successMessage = ref('')
 const imageError = ref(false)
+
+// Resolve the member photo across possible backend field formats and turn
+// relative storage paths (e.g. /storage/members/xxx.jpg) into usable URLs.
+// Today the backend MemberResource doesn't include the field, so most
+// profiles render the initial-letter avatar; the moment the backend sends
+// it (profile_picture, profilePicture, photo, avatar…), it displays.
+const profilePhoto = computed(() => {
+  const m = member.value
+  if (!m) return ''
+  const raw =
+    m.profile_picture ||
+    m.profilePicture ||
+    m.photo ||
+    m.avatar ||
+    m.member?.profile_picture ||
+    ''
+  if (!raw) return ''
+  if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:')) return raw
+  const clean = raw.startsWith('/') ? raw : `/${raw}`
+  // VITE_API_BASE_URL (e.g. http://localhost:8000/api) → origin; when
+  // unset/same-origin the relative path is served by the SPA host/proxy.
+  const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/?$/, '')
+  return base ? `${base}${clean}` : clean
+})
 
 // Churches for Transfer Dropdown
 const churches = ref([])
@@ -297,8 +321,8 @@ onMounted(loadMember)
             <!-- Profile photo / Avatar placeholder -->
             <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gold/20 text-2xl font-semibold text-gold border border-rule overflow-hidden">
               <img
-                v-if="member.profile_picture && !imageError"
-                :src="member.profile_picture"
+                v-if="profilePhoto && !imageError"
+                :src="profilePhoto"
                 :alt="`${member.first_name} ${member.last_name}`"
                 class="h-full w-full object-cover"
                 @error="imageError = true"

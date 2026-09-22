@@ -26,16 +26,16 @@ const routes = [
   { path: '/churches/:id/edit', name: 'church-edit', component: () => import('../views/Churches/ChurchForm.vue'), props: true, meta: { requiresChurchManager: true } },
   // Members
   { path: '/members', name: 'members', component: () => import('../views/Members/MemberList.vue'), meta: { requiresMemberViewer: true } },
-  { path: '/members/new', name: 'member-create', component: () => import('../views/Members/MemberForm.vue'), meta: { requiresChurchAdmin: true } },
-  { path: '/members/:id', name: 'member-show', component: () => import('../views/Members/MemberShow.vue'), props: true, meta: { requiresMemberShow: true } },
-  { path: '/members/:id/edit', name: 'member-edit', component: () => import('../views/Members/MemberForm.vue'), props: true, meta: { requiresChurchAdmin: true } },
+  { path: '/members/new', name: 'member-create', component: () => import('../views/Members/MemberForm.vue'), meta: { requiresMemberCreator: true } },
+  { path: '/members/:id', name: 'member-show', component: () => import('../views/Members/MemberShow.vue'), props: true, meta: { requiresMemberViewer: true } },
+  { path: '/members/:id/edit', name: 'member-edit', component: () => import('../views/Members/MemberForm.vue'), props: true, meta: { requiresMemberCreator: true } },
   // Users
-  { path: '/users', name: 'users', component: () => import('../views/Users/UserList.vue'), meta: { requiresAdmin: true } },
+  { path: '/users', name: 'users', component: () => import('../views/Users/UserList.vue'), meta: { requiresUserViewer: true } },
   // Committees
   { path: '/committees', name: 'committees', component: () => import('../views/Committees/CommitteeList.vue') },
   { path: '/committees/:id', name: 'committee-show', component: () => import('../views/Committees/CommitteeShow.vue'), props: true },
   // Sanctions
-  { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { requiresAdmin: true } },
+  { path: '/sanctions', name: 'sanctions', component: () => import('../views/Sanctions/SanctionList.vue'), meta: { requiresSanctionViewer: true } },
   // Knowledge base — documents used by the AI chatbot (RAG). Mission admin / Bishop only.
   { path: '/knowledge-files', name: 'knowledge-files', component: () => import('../views/KnowledgeFiles/KnowledgeFileList.vue'), meta: { requiresKnowledgeManager: true } },
   // Password management — always accessible to authenticated users
@@ -87,40 +87,43 @@ router.beforeEach((to, from) => {
     return { name: 'login-admin' }
   }
 
-  // 5. Dashboard route itself is restricted to admins — redirect simple users to Mon Église
+  // 5. Dashboard route — admins plus committee members holding real
+  // permissions (e.g. Secrétaire Général); plain users → Mon Église
   if (to.meta.requiresDashboard && !auth.canAccessDashboard) {
     return { name: 'mon-eglise' }
   }
 
   // 6. Requires mission_admin (church manager)
   if (to.meta.requiresChurchManager && !auth.canManageChurches) {
-    return { name: 'dashboard' }
+    return auth.canAccessDashboard ? { name: 'dashboard' } : { name: 'mon-eglise' }
   }
 
-  // 7. Requires admin (both mission_admin and church_admin)
-  if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return { name: 'mon-eglise' }
+  // 7. Requires 'user:view-any' (mission_admin, church_admin)
+  if (to.meta.requiresUserViewer && !auth.canViewUsers) {
+    return auth.canAccessDashboard ? { name: 'dashboard' } : { name: 'mon-eglise' }
   }
 
-  // 8. Requires at least admin to view member list
+  // 8. Requires 'member:view-any' (mission_admin, church_admin,
+  // committee titles like Secrétaire Général)
   if (to.meta.requiresMemberViewer && !auth.canViewMembers) {
-    return { name: 'mon-eglise' }
+    return auth.canAccessDashboard ? { name: 'dashboard' } : { name: 'mon-eglise' }
   }
 
-  // 9. Create/edit member: church_admin ONLY
-  if (to.meta.requiresChurchAdmin && !auth.canCreateMembers) {
-    return { name: 'members' }
+  // 9. Create/edit member: 'member:manage' holders (church_admin,
+  // Secrétaire Général) or mission_admin (edit-only via
+  // member:create-restricted; backend blocks mission_admin creates)
+  if (to.meta.requiresMemberCreator && !auth.canCreateMembers) {
+    return auth.canViewMembers ? { name: 'members' } : { name: 'mon-eglise' }
   }
 
   // 9b. Knowledge base management: mission_admin or Bishop only
   if (to.meta.requiresKnowledgeManager && !auth.canManageKnowledgeBase) {
-    return { name: 'dashboard' }
+    return auth.canAccessDashboard ? { name: 'dashboard' } : { name: 'mon-eglise' }
   }
 
-  // 10. Member detail page: admins only
-  if (to.meta.requiresMemberShow) {
-    if (auth.isAdmin) return true
-    return { name: 'mon-eglise' }
+  // 10. Sanctions list: 'sanction:view-any' holders
+  if (to.meta.requiresSanctionViewer && !auth.canViewSanctions) {
+    return auth.canAccessDashboard ? { name: 'dashboard' } : { name: 'mon-eglise' }
   }
 
   return true
