@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CommitteesAPI, ChurchesAPI } from '../../services/api'
+import { CommitteesAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
@@ -38,26 +38,14 @@ async function loadCommittees() {
   loading.value = true
   error.value = ''
   try {
-    let structureId = auth.user?.structure_id || auth.user?.member?.structure_id || null
-
-    // A church admin's login identifies the church; resolve its Structure id
-    // before requesting committees. Mission admins can query their allowed set
-    // directly when no structure id is present.
-    if (!structureId && auth.userChurchId) {
-      try {
-        const churchResponse = await ChurchesAPI.get(auth.userChurchId)
-        const church = churchResponse.data?.data ?? churchResponse.data
-        structureId = church?.structure_id || church?.structure?.id || null
-      } catch {
-        // The /committees request still lets the backend apply its user scope.
-      }
-    }
-
-    // Laravel paginates this endpoint at 15 records by default. Ask for
-    // the maximum allowed page size so mission admins see the full list.
+    // Scoping is fully server-side and correct: the backend auto-scopes
+    // church-level users to their own church's committees, and returns ALL
+    // committees (mission + every church) to mission_admin / mission committee
+    // users. The structure_id param is only honored for mission-level viewers,
+    // where it would WRONGLY narrow their list to a single church — so never
+    // send it; any viewer's proper scope comes from the authenticated user.
     const params = {
       per_page: 100,
-      ...(structureId ? { structure_id: structureId } : {}),
     }
     const { data: firstResponse } = await CommitteesAPI.list({ ...params, page: 1 })
     const firstPage = Array.isArray(firstResponse)
