@@ -484,7 +484,7 @@ onMounted(load)
           class="mt-4 w-full rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-dark outline-none transition focus:border-gold focus:ring-1 focus:ring-gold"
         >
           <option value="" disabled>{{ members.length ? 'Sélectionner un administrateur…' : 'Aucun administrateur disponible' }}</option>
-          <option v-for="m in members" :key="m.id" :value="m.id">
+          <option v-for="m in members" :key="m.id" :value="m.user_id" :disabled="!m.user_id">
             {{ memberFullName(m) }} — {{ m.member_code }}
           </option>
         </select>
